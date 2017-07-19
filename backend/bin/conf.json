@@ -1,0 +1,18 @@
+{
+    "system":{
+        "ConnectionTimeout" :10,
+        "ExecutionTimeout" : 10,
+        "KeyScanLimits" : 10000,
+        "RowScanLimits" : 10000
+    },
+    "servers":[
+        {
+            "ID"   : 1,
+            "Name" : "test",
+            "Host" : "test.mobile.bigo.tv",
+            "Port" : "6379",
+            "DBNums":15,
+            "Auth" : ""
+        }
+    ]
+}

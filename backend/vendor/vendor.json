@@ -57,16 +57,22 @@
 			"revisionTime": "2017-07-04T12:34:20Z"
 		},
 		{
+			"checksumSHA1": "2UmMbNHc8FBr98mJFN1k8ISOIHk=",
+			"path": "github.com/garyburd/redigo/internal",
+			"revision": "9e66b83d15a259978be267d0b61838c42c3904e3",
+			"revisionTime": "2017-07-18T22:17:51Z"
+		},
+		{
+			"checksumSHA1": "mb7JV1M7OFsuHlXEPY/LdVBGKVg=",
+			"path": "github.com/garyburd/redigo/redis",
+			"revision": "9e66b83d15a259978be267d0b61838c42c3904e3",
+			"revisionTime": "2017-07-18T22:17:51Z"
+		},
+		{
 			"checksumSHA1": "HpnVP25yXZys8uwdVe25MKMIwn8=",
 			"path": "github.com/juju/errors",
 			"revision": "c7d06af17c68cd34c835053720b21f6549d9b0ee",
 			"revisionTime": "2017-07-03T01:00:42Z"
-		},
-		{
-			"checksumSHA1": "u9e9kqjbDF15GFJPEz/WJ4YHQM0=",
-			"path": "github.com/kataras/iris",
-			"revision": "fe256febcbed52ff3efa46c837158a1ffedc8c7f",
-			"revisionTime": "2017-07-16T10:58:10Z"
 		},
 		{
 			"checksumSHA1": "tG/EHmHucNUPaNrnUFsSwbYVbAk=",
@@ -285,6 +291,12 @@
 			"revisionTime": "2017-07-16T02:53:09Z"
 		},
 		{
+			"checksumSHA1": "7EZyXN0EmZLgGxZxK01IJua4c8o=",
+			"path": "golang.org/x/net/websocket",
+			"revision": "5d0d7096b5f2ef7ba83f319c07ef63989a1c6f91",
+			"revisionTime": "2017-07-18T21:09:45Z"
+		},
+		{
 			"checksumSHA1": "VmSgg0+AGPLOL6WYjSNMKqelZhI=",
 			"path": "golang.org/x/sys/unix",
 			"revision": "4cd6d1a821c7175768725b55ca82f14683a29ea4",
@@ -295,12 +307,6 @@
 			"path": "gopkg.in/bsm/ratelimit.v1",
 			"revision": "db14e161995a5177acef654cb0dd785e8ee8bc22",
 			"revisionTime": "2016-02-20T15:49:07Z"
-		},
-		{
-			"checksumSHA1": "SPIlcnhp57fmsD8mejIaOLFtmpI=",
-			"path": "gopkg.in/redis.v4",
-			"revision": "c938162545c57136fa59879746bc65d0f1db3d1e",
-			"revisionTime": "2016-12-20T10:13:33Z"
 		},
 		{
 			"checksumSHA1": "u24d3wK+Otp3+nu3wSQOMqhg+N8=",
