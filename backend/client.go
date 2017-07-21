@@ -7,8 +7,6 @@ import (
 
 	"time"
 
-	"strings"
-
 	"strconv"
 
 	"reflect"
@@ -22,6 +20,8 @@ var redisClients map[int]*redis.Pool
 
 type scanType int
 
+var pool *redis.Pool
+
 const (
 	hashScan scanType = iota
 	zsetScan
@@ -29,12 +29,18 @@ const (
 	keyScan
 )
 
+type dataStruct struct {
+	Index  int        `json:"index"` // list 用
+	OldVal redisValue `json:"oldVal"`
+	NewVal redisValue `json:"newVal"`
+}
+
 func init() {
 	redisClients = make(map[int]*redis.Pool)
 }
 
 func getRedisClient(serverID int, db int) (redis.Conn, error) {
-	var pool *redis.Pool
+
 	var ok bool
 
 	pool, ok = redisClients[serverID]
@@ -77,88 +83,12 @@ func closeClient(serverID int) error {
 	return nil
 }
 
-func scanKeys(ws *websocket.Conn, data interface{}, t scanType) {
-	if info, ok := checkOperData(ws, data); ok {
-		key, ok := (info.Data).(string)
-		if !ok {
-			sendCmdReceive(ws, info.Data)
-			sendCmdError(ws, "key should be string!")
-			return
-		}
-
-		if key != "" && !strings.ContainsAny(key, "*") {
-			key = key + "*"
-		}
-
-		c, err := getRedisClient(info.ServerID, info.DB)
-		if err != nil {
-			sendCmdError(ws, "redis error: "+err.Error())
-			return
-		}
-		var ret []interface{}
-		var method string
-		var Operation string
-		var cmd string
-		switch t {
-		case keyScan:
-			method = "scan"
-			Operation = "ScanKeys"
-		case setScan:
-			method = "sscan"
-			Operation = "ScanSet"
-		case hashScan:
-			method = "hscan"
-			Operation = "ScanHash"
-		case zsetScan:
-			method = "zscan"
-			Operation = "ScanZset"
-		}
-		if key == "" {
-			cmd = method + " 0 " + " COUNT " + strconv.Itoa(_globalConfigs.System.KeyScanLimits)
-			ret, err = redis.Values(c.Do(method, 0, "COUNT", _globalConfigs.System.KeyScanLimits))
-		} else {
-			cmd = method + " 0 MATCH " + key + " COUNT " + strconv.Itoa(_globalConfigs.System.KeyScanLimits)
-			ret, err = redis.Values(c.Do(method, 0, "MATCH", key, "COUNT", _globalConfigs.System.KeyScanLimits))
-		}
-		sendCmd(ws, cmd)
-		if err != nil {
-			sendCmdError(ws, "redis error: "+err.Error())
-			return
-		}
-		sendCmdReceive(ws, ret)
-
-		keys, err := redis.Strings(ret[1], nil)
-		if err != nil {
-			sendCmdError(ws, "redis error: "+err.Error())
-			return
-		}
-
-		var message Message
-		message.Operation = Operation
-		message.Data = keys
-		sendCmdReceive(ws, keys)
-		websocket.JSON.Send(ws, message)
-	}
-}
-
-// ScanKeys scan redis key
-func ScanKeys(ws *websocket.Conn, data interface{}) {
-	scanKeys(ws, data, keyScan)
-}
-
-// HashScan scan hash
-func HashScan(ws *websocket.Conn, data interface{}) {
-	scanKeys(ws, data, hashScan)
-}
-
-// ZsetScan scan zset
-func ZsetScan(ws *websocket.Conn, data interface{}) {
-	scanKeys(ws, data, zsetScan)
-}
-
-// SetScan scan set
-func SetScan(ws *websocket.Conn, data interface{}) {
-	scanKeys(ws, data, setScan)
+// type redisValue
+type redisValue struct {
+	Key string      `json:"key"`
+	T   string      `json:"t"`
+	TTL int64       `json:"ttl"`
+	Val interface{} `json:"val"`
 }
 
 // checkOperData 检查协议
@@ -230,4 +160,23 @@ func sendCmdReceive(ws *websocket.Conn, data interface{}) {
 	message.Operation = "cmd"
 	message.Data = "Receive: " + info
 	websocket.JSON.Send(ws, message)
+}
+
+func checkRedisValue(ws *websocket.Conn, data interface{}) (c redis.Conn, _redisValue redisValue, b bool) {
+	if info, ok := checkOperData(ws, data); ok {
+		bytes, _ := json.Marshal(data)
+		var err error
+		err = json.Unmarshal(bytes, &_redisValue)
+		if err != nil {
+			sendCmdError(ws, "Unmarshal error "+err.Error())
+			return c, _redisValue, false
+		}
+		c, err = getRedisClient(info.ServerID, info.DB)
+		if err != nil {
+			sendCmdError(ws, "redis error: "+err.Error())
+			return c, _redisValue, false
+		}
+		return c, _redisValue, true
+	}
+	return c, _redisValue, false
 }

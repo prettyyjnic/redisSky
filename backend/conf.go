@@ -15,6 +15,7 @@ type systemConf struct {
 	ExecutionTimeout  int
 	KeyScanLimits     int
 	RowScanLimits     int
+	DelRowLimits      int
 }
 
 type globalConfigs struct {
