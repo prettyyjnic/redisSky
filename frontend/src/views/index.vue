@@ -85,7 +85,8 @@
         data () {
             return {
                 spanLeft: 2,
-                spanRight: 22
+                spanRight: 22,
+                servers: this.getServers(),
             }
         },
         computed: {
@@ -104,6 +105,18 @@
                 } else {
                     this.spanLeft = 2;
                     this.spanRight = 22;
+                }
+            },
+            getServers(){
+                var data = this.$socket.emit("QueryServers",{})
+                console.log(data)
+                return data;
+            }
+        },
+        socket:{
+            events:{
+                QueryServers(msg){
+                    console.log(msg)
                 }
             }
         }

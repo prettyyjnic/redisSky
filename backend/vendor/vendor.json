@@ -69,6 +69,46 @@
 			"revisionTime": "2017-07-18T22:17:51Z"
 		},
 		{
+			"path": "github.com/googollee/go-socket.io.v1",
+			"revision": ""
+		},
+		{
+			"path": "github.com/googollee/go-socket.io.v1.4",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "KFcqlKw1C+EdZcJYC31XRu1/dlw=",
+			"path": "github.com/googollee/go-socket.io/parser",
+			"revision": "ab4816a1fbc58a94fb9e7a637d548bb4dbee6491",
+			"revisionTime": "2017-02-23T22:18:44Z",
+			"version": "=v1.4",
+			"versionExact": "v1.4"
+		},
+		{
+			"checksumSHA1": "8KawKW6FJguwWz5cPvMg/ChmepE=",
+			"path": "github.com/gorilla/websocket",
+			"revision": "a69d9f6de432e2c6b296a947d8a5ee88f68522cf",
+			"revisionTime": "2017-07-18T20:23:41Z"
+		},
+		{
+			"checksumSHA1": "2b05iFLBjNwhqBQtFtIuC+/ezfw=",
+			"path": "github.com/graarh/golang-socketio",
+			"revision": "2c44953b9b5fcd4da83ec8816f002ce68a12ef2d",
+			"revisionTime": "2017-05-10T16:27:25Z"
+		},
+		{
+			"checksumSHA1": "Yy4eN9/8WEN6w3zXKljHUEW6iC0=",
+			"path": "github.com/graarh/golang-socketio/protocol",
+			"revision": "2c44953b9b5fcd4da83ec8816f002ce68a12ef2d",
+			"revisionTime": "2017-05-10T16:27:25Z"
+		},
+		{
+			"checksumSHA1": "sJu0Oxc+CTNpsJmOjtBXRkGqB3I=",
+			"path": "github.com/graarh/golang-socketio/transport",
+			"revision": "2c44953b9b5fcd4da83ec8816f002ce68a12ef2d",
+			"revisionTime": "2017-05-10T16:27:25Z"
+		},
+		{
 			"checksumSHA1": "HpnVP25yXZys8uwdVe25MKMIwn8=",
 			"path": "github.com/juju/errors",
 			"revision": "c7d06af17c68cd34c835053720b21f6549d9b0ee",
@@ -307,6 +347,48 @@
 			"path": "gopkg.in/bsm/ratelimit.v1",
 			"revision": "db14e161995a5177acef654cb0dd785e8ee8bc22",
 			"revisionTime": "2016-02-20T15:49:07Z"
+		},
+		{
+			"checksumSHA1": "1Y+TEqRavS2BMgl+9SCxtpCh4DM=",
+			"path": "gopkg.in/googollee/go-engine.io.v1",
+			"revision": "eae2c0880dada5047d480f859eba0513e113e67f",
+			"revisionTime": "2017-02-01T21:52:57Z"
+		},
+		{
+			"checksumSHA1": "frVJPBaoL7lOS2G4KbuzdqJ4cbg=",
+			"path": "gopkg.in/googollee/go-engine.io.v1/base",
+			"revision": "eae2c0880dada5047d480f859eba0513e113e67f",
+			"revisionTime": "2017-02-01T21:52:57Z"
+		},
+		{
+			"checksumSHA1": "k7y54228FV0y4z4SAavsNL/vwGI=",
+			"path": "gopkg.in/googollee/go-engine.io.v1/packet",
+			"revision": "eae2c0880dada5047d480f859eba0513e113e67f",
+			"revisionTime": "2017-02-01T21:52:57Z"
+		},
+		{
+			"checksumSHA1": "DAbr8QGzHc7sj0ylGiBvIa6BE/Y=",
+			"path": "gopkg.in/googollee/go-engine.io.v1/payload",
+			"revision": "eae2c0880dada5047d480f859eba0513e113e67f",
+			"revisionTime": "2017-02-01T21:52:57Z"
+		},
+		{
+			"checksumSHA1": "w7S59GfT0SJiN4QK0hFKn27H3ig=",
+			"path": "gopkg.in/googollee/go-engine.io.v1/transport",
+			"revision": "eae2c0880dada5047d480f859eba0513e113e67f",
+			"revisionTime": "2017-02-01T21:52:57Z"
+		},
+		{
+			"checksumSHA1": "pZpSstilpgtlT11fTle10eyYiVo=",
+			"path": "gopkg.in/googollee/go-engine.io.v1/transport/polling",
+			"revision": "eae2c0880dada5047d480f859eba0513e113e67f",
+			"revisionTime": "2017-02-01T21:52:57Z"
+		},
+		{
+			"checksumSHA1": "dmvhcBgAVYrrfsFr6oCVNoP9QdQ=",
+			"path": "gopkg.in/googollee/go-engine.io.v1/transport/websocket",
+			"revision": "eae2c0880dada5047d480f859eba0513e113e67f",
+			"revisionTime": "2017-02-01T21:52:57Z"
 		},
 		{
 			"checksumSHA1": "u24d3wK+Otp3+nu3wSQOMqhg+N8=",

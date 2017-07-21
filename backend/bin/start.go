@@ -1,34 +1,31 @@
 package main
 
 import (
+	"log"
 	"net/http"
 
-	"github.com/prettyyjnic/redisSky/backend"
-	"golang.org/x/net/websocket"
+	gosocketio "github.com/graarh/golang-socketio"
+	"github.com/graarh/golang-socketio/transport"
 )
 
 func main() {
+	server := gosocketio.NewServer(transport.GetDefaultWebsocketTransport())
+	server.On("gosocketio.OnConnection", func(c *gosocketio.Channel) {
+		log.Println("New client connected")
+		//join them to room
+		// c.Join("chat")
+	})
 
-	http.Handle("/ws", websocket.Handler(func(ws *websocket.Conn) {
-		for {
-			var data backend.Message
-			websocket.JSON.Receive(ws, &data)
-			switch data.Operation {
-			case "ping":
-				var response backend.Message
-				response.Operation = "pong"
-				response.Data = "pong"
-				go websocket.JSON.Send(ws, response)
-			case "close":
-				ws.Close()
-				break
-			case "keys":
-				go backend.ScanKeys(ws, data.Data)
-			}
-		}
-	}))
-	err := http.ListenAndServe(":8090", nil)
-	if err != nil {
-		panic("ListenAndServe: " + err.Error())
-	}
+	server.On("QueryServers", func(c *gosocketio.Channel) {
+		c.Emit("QueryServers", "hello world!")
+	})
+
+	http.HandleFunc("/socket.io/", func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		server.ServeHTTP(w, r)
+	})
+	log.Println("Serving at localhost:8090...")
+	log.Fatal(http.ListenAndServe(":8090", nil))
 }

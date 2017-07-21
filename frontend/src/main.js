@@ -6,14 +6,17 @@ import Vuex from 'vuex';
 import Util from './libs/util';
 import App from './app.vue';
 import 'iview/dist/styles/iview.css';
-
+import VueWebsocket from "vue-websocket";
 
 Vue.use(VueRouter);
 Vue.use(Vuex);
 
 Vue.use(iView);
 
-
+Vue.use(VueWebsocket, "ws://localhost:8090/", {
+    reconnection: true,
+    transports: ['websocket']
+});
 
 // 路由配置
 const RouterConfig = {
