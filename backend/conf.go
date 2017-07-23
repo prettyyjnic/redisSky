@@ -11,11 +11,11 @@ import (
 var _configFilePath string
 
 type systemConf struct {
-	ConnectionTimeout int
-	ExecutionTimeout  int
-	KeyScanLimits     int
-	RoconncanLimits   int
-	DelRowLimits      int
+	ConnectionTimeout int `json:"connectionTimeout"`
+	ExecutionTimeout  int `json:"executionTimeout"`
+	KeyScanLimits     int `json:"keyScanLimits"`
+	RowScanLimits     int `json:"rowScanLimits"`
+	DelRowLimits      int `json:"delRowLimits"`
 }
 
 type globalConfigs struct {
@@ -60,8 +60,8 @@ func saveConf() error {
 	return err
 }
 
-// SystemConfigs 获取系统配置信息
-func SystemConfigs(conn *gosocketio.Channel) {
+// QuerySystemConfigs 获取系统配置信息
+func QuerySystemConfigs(conn *gosocketio.Channel) {
 	conn.Emit("LoadSystemConfigs", _globalConfigs.System)
 }
 
@@ -69,9 +69,10 @@ func SystemConfigs(conn *gosocketio.Channel) {
 func UpdateSystemConfigs(conn *gosocketio.Channel, data interface{}) {
 	var _systemConf systemConf
 	var err error
-	_systemConf, ok := data.(systemConf)
-	if ok == false {
-		sendCmdError(conn, "data sould be struct of systemConf")
+	bytes, _ := json.Marshal(data)
+	err = json.Unmarshal(bytes, &_systemConf)
+	if err != nil {
+		sendCmdError(conn, "data sould be struct of systemConf!")
 		return
 	}
 

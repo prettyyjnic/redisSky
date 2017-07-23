@@ -15,8 +15,32 @@ func main() {
 		log.Println("New client connected")
 	})
 
+	server.On("QuerySystemConfigs", func(c *gosocketio.Channel) {
+		backend.QuerySystemConfigs(c)
+	})
+
+	server.On("UpdateSystemConfigs", func(c *gosocketio.Channel, data interface{}) {
+		backend.UpdateSystemConfigs(c, data)
+	})
+
+	server.On("QueryServer", func(c *gosocketio.Channel, serverID int) {
+		backend.QueryServer(c, serverID)
+	})
+
 	server.On("QueryServers", func(c *gosocketio.Channel) {
 		backend.QueryServers(c)
+	})
+
+	server.On("DelServer", func(c *gosocketio.Channel, serverID int) {
+		backend.DelServer(c, serverID)
+	})
+
+	server.On("UpdateServer", func(c *gosocketio.Channel, data interface{}) {
+		backend.UpdateServer(c, data)
+	})
+
+	server.On("AddServer", func(c *gosocketio.Channel, data interface{}) {
+		backend.AddServer(c, data)
 	})
 
 	server.On("ScanKeys", func(c *gosocketio.Channel, data interface{}) {

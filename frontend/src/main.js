@@ -38,17 +38,41 @@ router.afterEach(() => {
 
 
 const store = new Vuex.Store({
-    state: {
 
+    state: {
+        servers: [],
     },
     getters: {
-
+        servers: function(){
+            return this.servers
+        }
     },
     mutations: {
-
+        saveServers: function(state, servers){
+            state.servers = servers;
+        },
+        updateServer: function(state, server){
+            for (var i = state.servers.length - 1; i >= 0; i--) {
+                if (state.servers[i].id == server.id){
+                    state.servers[i] = server;
+                }
+            }
+        },
+        addServer: function(state, server){
+            state.servers.push(server);
+        }
+       
     },
     actions: {
-
+        saveServers: function({ commit }, servers){
+            commit('saveServers', servers);
+        },
+        updateServer: function({commit}, server){
+            commit('updateServer', server);            
+        },
+        addServer: function({commit}, server){
+            commit('addServer', server);            
+        }
     }
 });
 

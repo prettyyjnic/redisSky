@@ -17,7 +17,23 @@
 
         },
         methods: {
-
+            
+        },
+        socket:{
+            events:{
+                cmdLog(data){
+                    console.log("log:", data);
+                },
+                cmdErr(data){
+                    this.$Message.error(data);
+                },
+                cmdReceive(data){
+                    console.log("receive:", data)
+                },
+                ShowServers(servers){
+                    this.$store.dispatch('saveServers', servers);
+                }
+            }
         }
     };
 </script>

@@ -3,8 +3,29 @@ const routers = [{
     meta: {
         title: 'redisSky manager'
     },
-    component: (resolve) => require(['./views/index.vue'], resolve),
+    component: (resolve) => require(['./views/index.vue'], resolve),    
     children: [
+        {
+            path: '/servers/edit/:serverid?',
+            meta: {
+                title: 'servers -redisSky manager'
+            },
+            component: (resolve) => require(['./views/server/edit.vue'], resolve)
+        },
+        {
+            path: '/servers/list',
+            meta: {
+                title: 'servers list -redisSky manager'
+            },
+            component: (resolve) => require(['./views/server/list.vue'], resolve)
+        },
+        {
+            path: '/system/configs',
+            meta: {
+                title: 'system - redisSky manager'
+            },
+            component: (resolve) => require(['./views/system.vue'], resolve)
+        },
     	{
     		path: '/serverid/:serverid/keys',
     		meta: {

@@ -10,7 +10,7 @@
             "ID"   : 1,
             "Name" : "localhost",
             "Host" : "localhost",
-            "Port" : "6379",
+            "Port" : 6379,
             "DBNums":15,
             "Auth" : ""
         }

@@ -63,7 +63,7 @@ func DelKey(conn *gosocketio.Channel, data interface{}) {
 
 					for {
 						iterater, fields := scan(conn, c, key, "", _scanType, iterater)
-						slice := make([]interface{}, 0, _globalConfigs.System.RoconncanLimits)
+						slice := make([]interface{}, 0, _globalConfigs.System.RowScanLimits)
 						slice = append(slice, key)
 						for i := 0; i < len(fields); i = i + 2 {
 							slice = append(slice, fields[i])

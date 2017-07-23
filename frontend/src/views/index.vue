@@ -50,18 +50,36 @@
     }
 </style>
 <template>
-    <div class="layout" :class="{'layout-hide-text': spanLeft < 2}" :style="{ 'height': windowHeight}">
+    <div class="layout" :class="{'layout-hide-text': spanLeft < 3}" :style="{ 'height': windowHeight}">
         <Row type="flex" :style="{ 'height': windowHeight}">
             <i-col :span="spanLeft" class="layout-menu-left">
-                <Menu active-name="1" theme="dark" width="auto">
-                    <div class="layout-logo-left"></div>
-                    
-                    <Menu-item name="1" v-for="item in servers">
-                        <Tooltip :content="item.Host" placement="right-end">
-                           <Icon type="ios-navigate" :size="iconSize"></Icon>
-                            <span class="layout-text" ><router-link :to="'/serverid/'+ item.ID +'/keys'">{{item.Name}}</router-link></span>
-                        </Tooltip>
-                    </Menu-item>
+                <Menu active-name="serverList" theme="dark" width="auto" :accordion="true">
+                    <Menu-group title="System">
+                        <Menu-item name="serverList">
+                            <Icon type="social-reddit"></Icon>
+                            <span class="layout-text" ><router-link to='/servers/list'>server list</router-link></span>
+                        </Menu-item>
+                        <Menu-item name="addServer">
+                            <Icon type="plus-circled"></Icon>
+                            <span class="layout-text" ><router-link to='/servers/edit'>add server</router-link></span>
+                        </Menu-item>
+                        <Menu-item name="settings">
+                            <Icon type="settings"></Icon>
+                            <span class="layout-text" ><router-link to='/system/configs'>configs</router-link></span>
+                        </Menu-item>
+                    </Menu-group>
+
+                    <Menu-group title="Redis Servers">
+                        <Menu-item :name="'Servers'+item.id" v-for="item in servers">
+                            <Icon type="ios-navigate" :size="iconSize"></Icon>
+                            <Tooltip :content="item.host" placement="right-end">
+                                <span class="layout-text" >
+                                    <router-link :to="'/serverid/'+ item.id +'/keys'">{{item.name}}</router-link>
+                                </span>
+                            </Tooltip>
+                        </Menu-item>
+                    </Menu-group>
+
                 </Menu>
             </i-col>
             <i-col :span="spanRight">
@@ -87,48 +105,41 @@
     export default {
         data () {
             return {
-                spanLeft: 2,
-                spanRight: 22,
-                servers: this.getServers(),
+                spanLeft: 3,
+                spanRight: 21,
+                // servers: {}
             }
+        },
+        created () {
+            // 组件创建完后获取数据，
+            // 此时 data 已经被 observed 了
+            this.$socket.emit("QueryServers")
         },
         computed: {
             iconSize () {
-                return this.spanLeft === 2 ? 14 : 22;
+                return this.spanLeft === 3 ? 14 : 22;
             },
             windowHeight(){
                 return window.innerHeight+"px";
+            },
+            servers(){
+                return this.$store.state.servers;
             }
         },
         methods: {
             toggleClick () {
-                if (this.spanLeft === 2) {
+                if (this.spanLeft === 3) {
                     this.spanLeft = 1;
                     this.spanRight = 23;
                 } else {
-                    this.spanLeft = 2;
-                    this.spanRight = 22;
+                    this.spanLeft = 3;
+                    this.spanRight = 21;
                 }
-            },
-            getServers(){
-                this.$socket.emit("QueryServers",{})
-                return {};
             }
         },
         socket:{
             events:{
-                ShowServers(servers){
-                    this.servers = servers;
-                },
-                cmdLog(data){
-                    console.log("log:", data);
-                },
-                cmdErr(data){
-                    this.$Message.error(data);
-                },
-                cmdReceive(data){
-                    console.log("receive:", data)
-                }
+                
             }
         }
     }

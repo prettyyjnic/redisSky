@@ -66,7 +66,7 @@ func getRedisClient(serverID int, db int) (redis.Conn, error) {
 		pool = redis.NewPool(func() (redis.Conn, error) {
 			for i := 0; i < len(_globalConfigs.Servers); i++ {
 				if serverID == _globalConfigs.Servers[i].ID {
-					c, err := redis.DialTimeout("tcp", _globalConfigs.Servers[i].Host+":"+_globalConfigs.Servers[i].Port, time.Duration(_globalConfigs.System.ConnectionTimeout)*time.Second, time.Duration(_globalConfigs.System.ExecutionTimeout)*time.Second, time.Duration(_globalConfigs.System.ExecutionTimeout)*time.Second)
+					c, err := redis.DialTimeout("tcp", _globalConfigs.Servers[i].Host+":"+strconv.Itoa(_globalConfigs.Servers[i].Port), time.Duration(_globalConfigs.System.ConnectionTimeout)*time.Second, time.Duration(_globalConfigs.System.ExecutionTimeout)*time.Second, time.Duration(_globalConfigs.System.ExecutionTimeout)*time.Second)
 					if err != nil {
 						return nil, errors.New("redis server dial error" + err.Error())
 					}

@@ -126,8 +126,8 @@ func GetKey(conn *gosocketio.Channel, data interface{}) {
 				}
 				_redisValue.Val = s
 			case "list":
-				cmd = "LRANGE 0 " + strconv.Itoa(_globalConfigs.System.RoconncanLimits)
-				list, err := redis.Strings(c.Do("LRANGE", 0, _globalConfigs.System.RoconncanLimits))
+				cmd = "LRANGE 0 " + strconv.Itoa(_globalConfigs.System.RowScanLimits)
+				list, err := redis.Strings(c.Do("LRANGE", 0, _globalConfigs.System.RowScanLimits))
 				if err != nil {
 					sendCmdError(conn, err.Error())
 					return
