@@ -8,8 +8,8 @@
     "servers":[
         {
             "ID"   : 1,
-            "Name" : "test",
-            "Host" : "test.mobile.bigo.tv",
+            "Name" : "localhost",
+            "Host" : "localhost",
             "Port" : "6379",
             "DBNums":15,
             "Auth" : ""

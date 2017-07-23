@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
-	"golang.org/x/net/websocket"
+	gosocketio "github.com/graarh/golang-socketio"
 )
 
 // _configFilePath 配置文件路径
@@ -14,7 +14,7 @@ type systemConf struct {
 	ConnectionTimeout int
 	ExecutionTimeout  int
 	KeyScanLimits     int
-	RowScanLimits     int
+	RoconncanLimits   int
 	DelRowLimits      int
 }
 
@@ -32,11 +32,8 @@ type Message struct {
 	Error     string      `json:"error"`
 }
 
-// operData 操作协议
-type operData struct {
-	DB       int         `json:"db"`
-	ServerID int         `json:"serverid"`
-	Data     interface{} `json:"data"`
+func (message Message) marshal() ([]byte, error) {
+	return json.Marshal(message)
 }
 
 func init() {
@@ -64,33 +61,25 @@ func saveConf() error {
 }
 
 // SystemConfigs 获取系统配置信息
-func SystemConfigs(ws *websocket.Conn) {
-	var message Message
-	message.Operation = "SystemConfigs"
-	message.Data = _globalConfigs.System
-	websocket.JSON.Send(ws, message)
+func SystemConfigs(conn *gosocketio.Channel) {
+	conn.Emit("LoadSystemConfigs", _globalConfigs.System)
 }
 
 // UpdateSystemConfigs 更新系统信息
-func UpdateSystemConfigs(ws *websocket.Conn, data interface{}) {
+func UpdateSystemConfigs(conn *gosocketio.Channel, data interface{}) {
 	var _systemConf systemConf
 	var err error
-	var message Message
-	message.Operation = "UpdateSystemConfigs"
 	_systemConf, ok := data.(systemConf)
 	if ok == false {
-		message.Error = err.Error()
-		websocket.JSON.Send(ws, message)
+		sendCmdError(conn, "data sould be struct of systemConf")
 		return
 	}
 
 	_globalConfigs.System = _systemConf
 	err = saveConf()
 	if err != nil {
-		message.Error = err.Error()
-		websocket.JSON.Send(ws, message)
+		sendCmdError(conn, err.Error())
 		return
 	}
-	message.Data = _globalConfigs.System
-	websocket.JSON.Send(ws, message)
+	conn.Emit("LoadSystemConfigs", _globalConfigs.System)
 }

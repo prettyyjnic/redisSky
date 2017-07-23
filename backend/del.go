@@ -7,25 +7,25 @@ import (
 	"strings"
 
 	"github.com/garyburd/redigo/redis"
-	"golang.org/x/net/websocket"
+	gosocketio "github.com/graarh/golang-socketio"
 )
 
 // DelKey del one key
-func DelKey(ws *websocket.Conn, data interface{}) {
-	if c, _redisValue, ok := checkRedisValue(ws, data); ok {
+func DelKey(conn *gosocketio.Channel, data interface{}) {
+	if c, _redisValue, ok := checkRedisValue(conn, data); ok {
 		defer c.Close()
 		var key = _redisValue.Key
-		t, err := keyType(ws, c, key)
+		t, err := keyType(conn, c, key)
 		if err == nil {
 			switch t {
 			case "none":
-				sendCmdError(ws, "key: "+key+" is not exists")
+				sendCmdError(conn, "key: "+key+" is not exists")
 			case "string":
-				delKey(ws, c, key)
+				delKey(conn, c, key)
 
 			case "list":
 				var limits = int64(_globalConfigs.System.DelRowLimits)
-				if sizes, ok := checkBigKey(ws, c, key, "list"); ok {
+				if sizes, ok := checkBigKey(conn, c, key, "list"); ok {
 					// else use ltrim
 					for end := sizes - 1; end >= 0; end = end - limits {
 						start := end - limits
@@ -33,19 +33,19 @@ func DelKey(ws *websocket.Conn, data interface{}) {
 							start = 0
 						}
 						cmd := fmt.Sprintf("LTRIM %s %d %d", key, start, end)
-						sendCmd(ws, cmd)
+						sendCmd(conn, cmd)
 						data, err := c.Do("LTRIM", key, start, end)
 						if err != nil {
-							sendCmdError(ws, err.Error())
+							sendCmdError(conn, err.Error())
 							return
 						}
-						sendCmdReceive(ws, data)
+						sendCmdReceive(conn, data)
 					}
 				}
 
 			case "hash", "set", "zset":
 				// var limits = int64(_globalConfigs.System.DelRowLimits)
-				if _, ok := checkBigKey(ws, c, key, t); ok {
+				if _, ok := checkBigKey(conn, c, key, t); ok {
 					var delMethod string
 					var _scanType scanType
 					switch t {
@@ -62,18 +62,18 @@ func DelKey(ws *websocket.Conn, data interface{}) {
 					var iterater int64
 
 					for {
-						iterater, fields := scan(ws, c, key, "", _scanType, iterater)
-						slice := make([]interface{}, 0, _globalConfigs.System.RowScanLimits)
+						iterater, fields := scan(conn, c, key, "", _scanType, iterater)
+						slice := make([]interface{}, 0, _globalConfigs.System.RoconncanLimits)
 						slice = append(slice, key)
 						for i := 0; i < len(fields); i = i + 2 {
 							slice = append(slice, fields[i])
 						}
 						cmd := fmt.Sprintf("%s %v", delMethod, slice)
-						sendCmd(ws, cmd)
+						sendCmd(conn, cmd)
 						_, err := redis.Int64(c.Do(delMethod, slice...))
 						slice = nil
 						if err != nil {
-							sendCmdError(ws, err.Error())
+							sendCmdError(conn, err.Error())
 							return
 						}
 						if iterater == 0 {
@@ -84,18 +84,15 @@ func DelKey(ws *websocket.Conn, data interface{}) {
 				}
 
 			}
-			message := &Message{
-				Operation: "DelKey",
-				Data:      "OK",
-			}
-			websocket.JSON.Send(ws, message)
+
+			conn.Emit("DelKey", _redisValue.Key)
 		}
 	}
 }
 
-func checkBigKey(ws *websocket.Conn, c redis.Conn, key string, t string) (int64, bool) {
-	if checkLazyDel(ws, c) {
-		delKey(ws, c, key)
+func checkBigKey(conn *gosocketio.Channel, c redis.Conn, key string, t string) (int64, bool) {
+	if checkLazyDel(conn, c) {
+		delKey(conn, c, key)
 		return 0, false
 	}
 	var method string
@@ -109,33 +106,33 @@ func checkBigKey(ws *websocket.Conn, c redis.Conn, key string, t string) (int64,
 	case "zset":
 		method = "ZCARD"
 	}
-	sendCmd(ws, method+" "+key)
+	sendCmd(conn, method+" "+key)
 	sizes, err := redis.Int64(c.Do(method, key))
 	if err != nil {
-		sendCmdError(ws, err.Error())
+		sendCmdError(conn, err.Error())
 		return 0, false
 	}
-	sendCmdReceive(ws, sizes)
+	sendCmdReceive(conn, sizes)
 	if sizes == 0 {
-		sendCmdError(ws, "key is not exists")
+		sendCmdError(conn, "key is not exists")
 		return 0, false
 	}
 	var limits = int64(_globalConfigs.System.DelRowLimits)
 	if sizes <= limits { // just del it if sizes lt DelRowLimits
-		delKey(ws, c, key)
+		delKey(conn, c, key)
 		return sizes, false
 	}
 	return sizes, true
 
 }
 
-func checkLazyDel(ws *websocket.Conn, c redis.Conn) bool {
+func checkLazyDel(conn *gosocketio.Channel, c redis.Conn) bool {
 	info, err := redis.Strings(c.Do("INFO", "SERVER"))
 	if err != nil {
-		sendCmdError(ws, err.Error())
+		sendCmdError(conn, err.Error())
 		return false
 	}
-	sendCmdReceive(ws, info)
+	sendCmdReceive(conn, info)
 	for i := 0; i < len(info); i++ {
 		infoArr := strings.Split(info[i], ":")
 		if len(infoArr) == 2 && infoArr[0] == "redis_version" {
@@ -158,136 +155,136 @@ func checkLazyDel(ws *websocket.Conn, c redis.Conn) bool {
 	return false
 }
 
-func delKey(ws *websocket.Conn, c redis.Conn, key string) {
-	sendCmd(ws, "DEL "+key)
+func delKey(conn *gosocketio.Channel, c redis.Conn, key string) {
+	sendCmd(conn, "DEL "+key)
 	i, err := redis.Int(c.Do("DEL", key))
 	if err != nil {
-		sendCmdError(ws, err.Error())
+		sendCmdError(conn, err.Error())
 		return
 	}
-	sendCmdReceive(ws, i)
+	sendCmdReceive(conn, i)
 	if i == 0 {
-		sendCmdError(ws, "key: "+key+" is not exists")
+		sendCmdError(conn, "key: "+key+" is not exists")
 		return
 	}
 }
 
-func srem(ws *websocket.Conn, c redis.Conn, key, val string) {
+func srem(conn *gosocketio.Channel, c redis.Conn, key, val string) {
 	var cmd string
 	cmd = fmt.Sprintf("SREM %s %s", key, val)
-	sendCmd(ws, cmd)
+	sendCmd(conn, cmd)
 	r, err := c.Do("SREM", key, val)
 	if err != nil {
-		sendCmdError(ws, err.Error())
+		sendCmdError(conn, err.Error())
 		return
 	}
-	sendCmdReceive(ws, r)
+	sendCmdReceive(conn, r)
 }
 
-func zrem(ws *websocket.Conn, c redis.Conn, key, val string) {
+func zrem(conn *gosocketio.Channel, c redis.Conn, key, val string) {
 	var cmd string
 	cmd = fmt.Sprintf("ZREM %s %s", key, val)
-	sendCmd(ws, cmd)
+	sendCmd(conn, cmd)
 	r, err := c.Do("ZREM", key, val)
 	if err != nil {
-		sendCmdError(ws, err.Error())
+		sendCmdError(conn, err.Error())
 		return
 	}
-	sendCmdReceive(ws, r)
+	sendCmdReceive(conn, r)
 }
 
-func hdel(ws *websocket.Conn, c redis.Conn, key, field string) {
+func hdel(conn *gosocketio.Channel, c redis.Conn, key, field string) {
 	var cmd string
 	cmd = fmt.Sprintf("HDEL %s %s", key, field)
-	sendCmd(ws, cmd)
+	sendCmd(conn, cmd)
 	r, err := c.Do("HDEL", key, field)
 	if err != nil {
-		sendCmdError(ws, err.Error())
+		sendCmdError(conn, err.Error())
 		return
 	}
-	sendCmdReceive(ws, r)
+	sendCmdReceive(conn, r)
 }
 
 // DelRow del one row
-func DelRow(ws *websocket.Conn, data interface{}) {
-	if c, _redisValue, ok := checkRedisValue(ws, data); ok {
+func DelRow(conn *gosocketio.Channel, data interface{}) {
+	if c, _redisValue, ok := checkRedisValue(conn, data); ok {
 		defer c.Close()
 		var key = _redisValue.Key
-		t, err := keyType(ws, c, key)
+		t, err := keyType(conn, c, key)
 		if err == nil {
 			switch t {
 			case "none":
-				sendCmdError(ws, "key: "+key+" is not exists")
+				sendCmdError(conn, "key: "+key+" is not exists")
 			case "string":
-				sendCmdError(ws, "string don not support this func")
+				sendCmdError(conn, "string don not support this func")
 			case "set", "zset":
 				val, ok := (_redisValue.Val).(string)
 				if !ok {
-					sendCmdError(ws, "val should be string")
+					sendCmdError(conn, "val should be string")
 					return
 				}
 				if t == "set" {
-					srem(ws, c, key, val)
+					srem(conn, c, key, val)
 				} else {
-					zrem(ws, c, key, val)
+					zrem(conn, c, key, val)
 				}
 			case "hash":
 				val, ok := (_redisValue.Val).(string)
 				if !ok {
-					sendCmdError(ws, "val should be string")
+					sendCmdError(conn, "val should be string")
 					return
 				}
-				hdel(ws, c, _redisValue.Key, val)
+				hdel(conn, c, _redisValue.Key, val)
 			case "list":
 				bytes, _ := json.Marshal(_redisValue.Val)
 				var _val dataStruct
 				err := json.Unmarshal(bytes, &_val)
 				if err != nil {
-					sendCmdError(ws, "val should be dataStruct")
+					sendCmdError(conn, "val should be dataStruct")
 					return
 				}
 				oldVal, ok := (_val.OldVal.Val).(string)
 				if ok == false {
-					sendCmdError(ws, "oldval should be string")
+					sendCmdError(conn, "oldval should be string")
 					return
 				}
-				if vals, ok := lrange(ws, c, _redisValue.Key, _val.Index, _val.Index); ok {
+				if vals, ok := lrange(conn, c, _redisValue.Key, _val.Index, _val.Index); ok {
 					if len(vals) != 0 || len(vals) > 1 {
-						sendCmdError(ws, "the index of the list is empty")
+						sendCmdError(conn, "the index of the list is empty")
 						return
 					}
 					// check the field is modify already
 					var valInRedis = vals[0]
 					if oldVal != valInRedis {
-						sendCmdError(ws, "your value: "+valInRedis+" does not match "+oldVal)
+						sendCmdError(conn, "your value: "+valInRedis+" does not match "+oldVal)
 						return
 					}
 					removeVal := "-----TMP-----VALUE-----SHOULD-----REMOVE-----"
 					cmd := fmt.Sprintf("LSET %s %d %s", _redisValue.Key, _val.Index, removeVal)
-					sendCmd(ws, cmd)
+					sendCmd(conn, cmd)
 					r, err := c.Do("LSET", _redisValue.Key, _val.Index, removeVal)
 					if err != nil {
-						sendCmdError(ws, "redis err:"+err.Error())
+						sendCmdError(conn, "redis err:"+err.Error())
 						return
 					}
-					sendCmdReceive(ws, r)
+					sendCmdReceive(conn, r)
 
 					cmd = fmt.Sprintf("LREM %s 0 %s", _redisValue.Key, removeVal)
-					sendCmd(ws, cmd)
+					sendCmd(conn, cmd)
 					r, err = c.Do("LREM", _redisValue.Key, 0, removeVal)
 					if err != nil {
-						sendCmdError(ws, "redis err:"+err.Error())
+						sendCmdError(conn, "redis err:"+err.Error())
 						return
 					}
-					sendCmdReceive(ws, r)
+					sendCmdReceive(conn, r)
 				}
 			}
-
-			message := &Message{
-				Operation: "DelRow",
-				Data:      "Success",
+			val, err := _redisValue.marshal()
+			if err != nil {
+				sendCmdError(conn, "marshal err:"+err.Error())
+				return
 			}
-			websocket.JSON.Send(ws, message)
+			conn.Emit("DelRow", val)
 		}
 	}
 }

@@ -1,8 +1,6 @@
 package backend
 
-import (
-	"golang.org/x/net/websocket"
-)
+import gosocketio "github.com/graarh/golang-socketio"
 
 // redisServer 配置
 type redisServer struct {
@@ -17,44 +15,32 @@ type redisServer struct {
 var _maxServerID int
 
 // QueryServers 获取列表
-func QueryServers(ws *websocket.Conn) {
-	var message Message
-	message.Data = _globalConfigs.Servers
-	message.Operation = "QueryServers"
-	websocket.JSON.Send(ws, message)
+func QueryServers(conn *gosocketio.Channel) {
+	conn.Emit("ShowServers", _globalConfigs.Servers)
 }
 
 // AddServer 增加redis server
-func AddServer(ws *websocket.Conn, data interface{}) {
+func AddServer(conn *gosocketio.Channel, data interface{}) {
 	var server redisServer
-	var err error
-	var message Message
-	message.Operation = "AddServer"
 	server, ok := data.(redisServer)
 	if ok == false {
-		message.Error = err.Error()
-		websocket.JSON.Send(ws, message)
+		sendCmdError(conn, "data should be struct of redisServer")
 		return
 	}
-
 	_maxServerID++
 	server.ID = _maxServerID
 	_globalConfigs.Servers = append(_globalConfigs.Servers, server)
-	saveConf()
-	message.Data = _globalConfigs.Servers
-	websocket.JSON.Send(ws, message)
+	conn.Emit("AddServerSuccess", nil)
 }
 
 // UpdateServer 更新redisServer
-func UpdateServer(ws *websocket.Conn, data interface{}) {
+func UpdateServer(conn *gosocketio.Channel, data interface{}) {
 	var server redisServer
-	var err error
 	var message Message
 	message.Operation = "UpdateServer"
 	server, ok := data.(redisServer)
 	if ok == false {
-		message.Error = err.Error()
-		websocket.JSON.Send(ws, message)
+		sendCmdError(conn, "data sould be struct of redisServer")
 		return
 	}
 
@@ -64,6 +50,5 @@ func UpdateServer(ws *websocket.Conn, data interface{}) {
 		}
 	}
 	saveConf()
-	message.Data = _globalConfigs.Servers
-	websocket.JSON.Send(ws, message)
+	conn.Emit("UpdateServerSuccess", nil)
 }

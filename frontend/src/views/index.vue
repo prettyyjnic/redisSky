@@ -55,9 +55,12 @@
             <i-col :span="spanLeft" class="layout-menu-left">
                 <Menu active-name="1" theme="dark" width="auto">
                     <div class="layout-logo-left"></div>
-                    <Menu-item name="1">
-                        <Icon type="ios-navigate" :size="iconSize"></Icon>
-                        <span class="layout-text" ><router-link to="/keys">localhost</router-link></span>
+                    
+                    <Menu-item name="1" v-for="item in servers">
+                        <Tooltip :content="item.Host" placement="right-end">
+                           <Icon type="ios-navigate" :size="iconSize"></Icon>
+                            <span class="layout-text" ><router-link :to="'/serverid/'+ item.ID +'/keys'">{{item.Name}}</router-link></span>
+                        </Tooltip>
                     </Menu-item>
                 </Menu>
             </i-col>
@@ -108,15 +111,23 @@
                 }
             },
             getServers(){
-                var data = this.$socket.emit("QueryServers",{})
-                console.log(data)
-                return data;
+                this.$socket.emit("QueryServers",{})
+                return {};
             }
         },
         socket:{
             events:{
-                QueryServers(msg){
-                    console.log(msg)
+                ShowServers(servers){
+                    this.servers = servers;
+                },
+                cmdLog(data){
+                    console.log("log:", data);
+                },
+                cmdErr(data){
+                    this.$Message.error(data);
+                },
+                cmdReceive(data){
+                    console.log("receive:", data)
                 }
             }
         }

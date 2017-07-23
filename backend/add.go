@@ -6,32 +6,32 @@ import (
 	"reflect"
 
 	"github.com/garyburd/redigo/redis"
-	"golang.org/x/net/websocket"
+	gosocketio "github.com/graarh/golang-socketio"
 )
 
 // AddKey save to redis
-func AddKey(ws *websocket.Conn, data interface{}) {
-	if c, _redisValue, ok := checkRedisValue(ws, data); ok {
+func AddKey(conn *gosocketio.Channel, data interface{}) {
+	if c, _redisValue, ok := checkRedisValue(conn, data); ok {
 		defer c.Close()
 		switch _redisValue.T {
 		case "string":
 			val, ok := (_redisValue.Val).(string)
 			if !ok {
-				sendCmdError(ws, "val should be string")
+				sendCmdError(conn, "val should be string")
 				return
 			}
 			cmd := "SET " + _redisValue.Key + " " + val
-			sendCmd(ws, cmd)
+			sendCmd(conn, cmd)
 			r, err := c.Do("SET", _redisValue.Key, val)
 			if err != nil {
-				sendCmdError(ws, err.Error())
+				sendCmdError(conn, err.Error())
 				return
 			}
-			sendCmdReceive(ws, r)
+			sendCmdReceive(conn, r)
 		case "list", "set":
 			val, ok := (_redisValue.Val).([]string)
 			if !ok {
-				sendCmdError(ws, "val should be array of string")
+				sendCmdError(conn, "val should be array of string")
 				return
 			}
 			var method string
@@ -43,95 +43,91 @@ func AddKey(ws *websocket.Conn, data interface{}) {
 			slice := make([]interface{}, 0, 10)
 			slice = append(slice, _redisValue.Key, val)
 			cmd := fmt.Sprintf("%s %v", method, slice)
-			sendCmd(ws, cmd)
+			sendCmd(conn, cmd)
 			r, err := c.Do(method, slice...)
 			if err != nil {
-				sendCmdError(ws, err.Error())
+				sendCmdError(conn, err.Error())
 				return
 			}
-			sendCmdReceive(ws, r)
+			sendCmdReceive(conn, r)
 		case "hash":
-			hset(ws, c, _redisValue)
+			hset(conn, c, _redisValue)
 		case "zset":
-			zadd(ws, c, _redisValue)
+			zadd(conn, c, _redisValue)
 		default:
-			sendCmdError(ws, "type is not correct")
+			sendCmdError(conn, "type is not correct")
 			return
 		}
 
-		message := &Message{
-			Operation: "AddKey",
-			Data:      "success",
-		}
-		websocket.JSON.Send(ws, message)
+		conn.Emit("ReloadKey", _redisValue.Key)
 	}
 }
 
 // zadd
-func zadd(ws *websocket.Conn, c redis.Conn, _redisValue redisValue) bool {
+func zadd(conn *gosocketio.Channel, c redis.Conn, _redisValue redisValue) bool {
 	vals, ok := (_redisValue.Val).(map[string]interface{})
 	if !ok {
-		sendCmdError(ws, "val should be map of string -> int64 or string -> string")
+		sendCmdError(conn, "val should be map of string -> int64 or string -> string")
 		return false
 	}
 	var cmd string
 	for k, v := range vals {
 		kind := reflect.ValueOf(v).Kind()
 		if kind != reflect.Int64 && kind != reflect.Int && kind != reflect.String {
-			sendCmdError(ws, "val should be map of string -> int or string -> string")
+			sendCmdError(conn, "val should be map of string -> int or string -> string")
 			return false
 		}
 
 		cmd = fmt.Sprintf("ZADD %s %d %s", _redisValue.Key, v, k)
-		sendCmd(ws, cmd)
+		sendCmd(conn, cmd)
 		r, err := c.Do("ZADD", _redisValue.Key, v, k)
 		if err != nil {
-			sendCmdError(ws, err.Error())
+			sendCmdError(conn, err.Error())
 			return false
 		}
-		sendCmdReceive(ws, r)
+		sendCmdReceive(conn, r)
 	}
 	return true
 }
 
 // hset redis hset
-func hset(ws *websocket.Conn, c redis.Conn, _redisValue redisValue) bool {
+func hset(conn *gosocketio.Channel, c redis.Conn, _redisValue redisValue) bool {
 	vals, ok := (_redisValue.Val).(map[string]interface{})
 	if !ok {
-		sendCmdError(ws, "val should be map of string -> int64 or string -> string")
+		sendCmdError(conn, "val should be map of string -> int64 or string -> string")
 		return false
 	}
 	var cmd string
 	for k, v := range vals {
 		kind := reflect.ValueOf(v).Kind()
 		if kind != reflect.Int64 && kind != reflect.Int && kind != reflect.String {
-			sendCmdError(ws, "val should be map of string -> int or string -> string")
+			sendCmdError(conn, "val should be map of string -> int or string -> string")
 			return false
 		}
 
 		cmd = fmt.Sprintf("HSET %s %s %s", _redisValue.Key, k, v)
-		sendCmd(ws, cmd)
+		sendCmd(conn, cmd)
 		r, err := c.Do("HSET", _redisValue.Key, k, v)
 		if err != nil {
-			sendCmdError(ws, err.Error())
+			sendCmdError(conn, err.Error())
 			return false
 		}
-		sendCmdReceive(ws, r)
+		sendCmdReceive(conn, r)
 	}
 	return true
 }
 
 // AddRow add one row 2 redis
-func AddRow(ws *websocket.Conn, data interface{}) {
-	if c, _redisValue, ok := checkRedisValue(ws, data); ok {
+func AddRow(conn *gosocketio.Channel, data interface{}) {
+	if c, _redisValue, ok := checkRedisValue(conn, data); ok {
 		defer c.Close()
-		t, err := keyType(ws, c, _redisValue.Key)
+		t, err := keyType(conn, c, _redisValue.Key)
 		if err != nil {
-			sendCmdError(ws, err.Error())
+			sendCmdError(conn, err.Error())
 			return
 		}
 		if t != _redisValue.T {
-			sendCmdError(ws, "type "+_redisValue.T+" does not match"+t)
+			sendCmdError(conn, "type "+_redisValue.T+" does not match"+t)
 			return
 		}
 		var allowType = [4]string{
@@ -147,7 +143,7 @@ func AddRow(ws *websocket.Conn, data interface{}) {
 					var method string
 					v, ok := (_redisValue.Val).(string)
 					if ok == false {
-						sendCmdError(ws, "val should be string")
+						sendCmdError(conn, "val should be string")
 						return
 					}
 					if t == "set" {
@@ -156,31 +152,30 @@ func AddRow(ws *websocket.Conn, data interface{}) {
 						method = "LPUSH"
 					}
 					cmd := method + " " + _redisValue.Key + " " + v
-					sendCmd(ws, cmd)
+					sendCmd(conn, cmd)
 					r, err := c.Do(method, _redisValue.Key, v)
 					if err != nil {
-						sendCmdError(ws, err.Error())
+						sendCmdError(conn, err.Error())
 						return
 					}
-					sendCmdReceive(ws, r)
+					sendCmdReceive(conn, r)
 				case "zset":
-					if zadd(ws, c, _redisValue) == false {
+					if zadd(conn, c, _redisValue) == false {
 						return
 					}
 				case "hash":
-					if hset(ws, c, _redisValue) == false {
+					if hset(conn, c, _redisValue) == false {
 						return
 					}
 				}
-
-				message := &Message{
-					Operation: "AddRow",
-					Data:      "Success",
+				message, err := _redisValue.marshal()
+				if err != nil {
+					sendCmdError(conn, "marshal error:"+err.Error())
+					return
 				}
-				websocket.JSON.Send(ws, message)
-				return
+				conn.Emit("AddRow", message)
 			}
 		}
-		sendCmdError(ws, "type "+t+" does not support")
+		sendCmdError(conn, "type "+t+" does not support")
 	}
 }

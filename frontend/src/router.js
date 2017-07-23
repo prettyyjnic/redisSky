@@ -6,14 +6,14 @@ const routers = [{
     component: (resolve) => require(['./views/index.vue'], resolve),
     children: [
     	{
-    		path: '/keys',
+    		path: '/serverid/:serverid/keys',
     		meta: {
 		        title: 'keys - redisSky manager'
 		    },
 		    component: (resolve) => require(['./views/keys.vue'], resolve),
 		    children: [
 		    	{
-		    		path: '/keys/:key',
+		    		path: '/serverid/:serverid/keys/:key',
 		    		component: (resolve) => require(['./views/item.vue'], resolve)
 		    	}
 		    ]

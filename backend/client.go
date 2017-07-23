@@ -3,8 +3,6 @@ package backend
 import (
 	"errors"
 
-	"golang.org/x/net/websocket"
-
 	"time"
 
 	"strconv"
@@ -14,6 +12,7 @@ import (
 	"encoding/json"
 
 	"github.com/garyburd/redigo/redis"
+	gosocketio "github.com/graarh/golang-socketio"
 )
 
 var redisClients map[int]*redis.Pool
@@ -29,10 +28,29 @@ const (
 	keyScan
 )
 
+// operData 操作协议
+type operData struct {
+	DB       int         `json:"db"`
+	ServerID int         `json:"serverid"`
+	Data     interface{} `json:"data"`
+}
+
 type dataStruct struct {
 	Index  int        `json:"index"` // list 用
 	OldVal redisValue `json:"oldVal"`
 	NewVal redisValue `json:"newVal"`
+}
+
+// type redisValue
+type redisValue struct {
+	Key string      `json:"key"`
+	T   string      `json:"t"`
+	TTL int64       `json:"ttl"`
+	Val interface{} `json:"val"`
+}
+
+func (_redisValue redisValue) marshal() ([]byte, error) {
+	return json.Marshal(_redisValue)
 }
 
 func init() {
@@ -83,54 +101,40 @@ func closeClient(serverID int) error {
 	return nil
 }
 
-// type redisValue
-type redisValue struct {
-	Key string      `json:"key"`
-	T   string      `json:"t"`
-	TTL int64       `json:"ttl"`
-	Val interface{} `json:"val"`
-}
-
 // checkOperData 检查协议
-func checkOperData(ws *websocket.Conn, data interface{}) (operData, bool) {
+func checkOperData(conn *gosocketio.Channel, data interface{}) (operData, bool) {
 	var info operData
 	if reflect.ValueOf(data).Kind() != reflect.Map {
-		sendCmdError(ws, "proto error ")
+		sendCmdError(conn, "proto error ")
 		return info, false
 	}
 	var err error
 	var bytes []byte
 	bytes, err = json.Marshal(data)
 	if err != nil {
-		sendCmdError(ws, err.Error())
+		sendCmdError(conn, err.Error())
 		return info, false
 	}
 	err = json.Unmarshal(bytes, &info)
 	if err != nil {
-		sendCmdError(ws, err.Error())
+		sendCmdError(conn, err.Error())
 		return info, false
 	}
 	return info, true
 }
 
 // sendCmd
-func sendCmd(ws *websocket.Conn, cmd string) {
-	var message Message
-	message.Operation = "cmd"
-	message.Data = cmd
-	websocket.JSON.Send(ws, message)
+func sendCmd(conn *gosocketio.Channel, cmd string) {
+	conn.Emit("cmdLog", cmd)
 }
 
 // sendRedisErr
-func sendCmdError(ws *websocket.Conn, cmd string) {
-	var message Message
-	message.Operation = "cmd"
-	message.Error = cmd
-	websocket.JSON.Send(ws, message)
+func sendCmdError(conn *gosocketio.Channel, cmd string) {
+	conn.Emit("cmdErr", cmd)
 }
 
 // sendRedisReceive
-func sendCmdReceive(ws *websocket.Conn, data interface{}) {
+func sendCmdReceive(conn *gosocketio.Channel, data interface{}) {
 	var info string
 	v := reflect.ValueOf(data)
 	k := v.Kind()
@@ -155,25 +159,21 @@ func sendCmdReceive(ws *websocket.Conn, data interface{}) {
 	default:
 		info = "Unknown: " + k.String()
 	}
-
-	var message Message
-	message.Operation = "cmd"
-	message.Data = "Receive: " + info
-	websocket.JSON.Send(ws, message)
+	conn.Emit("cmdReceive", "Receive: "+info)
 }
 
-func checkRedisValue(ws *websocket.Conn, data interface{}) (c redis.Conn, _redisValue redisValue, b bool) {
-	if info, ok := checkOperData(ws, data); ok {
+func checkRedisValue(conn *gosocketio.Channel, data interface{}) (c redis.Conn, _redisValue redisValue, b bool) {
+	if info, ok := checkOperData(conn, data); ok {
 		bytes, _ := json.Marshal(data)
 		var err error
 		err = json.Unmarshal(bytes, &_redisValue)
 		if err != nil {
-			sendCmdError(ws, "Unmarshal error "+err.Error())
+			sendCmdError(conn, "Unmarshal error "+err.Error())
 			return c, _redisValue, false
 		}
 		c, err = getRedisClient(info.ServerID, info.DB)
 		if err != nil {
-			sendCmdError(ws, "redis error: "+err.Error())
+			sendCmdError(conn, "redis error: "+err.Error())
 			return c, _redisValue, false
 		}
 		return c, _redisValue, true

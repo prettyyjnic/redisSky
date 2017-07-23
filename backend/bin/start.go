@@ -6,18 +6,21 @@ import (
 
 	gosocketio "github.com/graarh/golang-socketio"
 	"github.com/graarh/golang-socketio/transport"
+	"github.com/prettyyjnic/redisSky/backend"
 )
 
 func main() {
 	server := gosocketio.NewServer(transport.GetDefaultWebsocketTransport())
-	server.On("gosocketio.OnConnection", func(c *gosocketio.Channel) {
+	server.On(gosocketio.OnConnection, func(c *gosocketio.Channel) {
 		log.Println("New client connected")
-		//join them to room
-		// c.Join("chat")
 	})
 
 	server.On("QueryServers", func(c *gosocketio.Channel) {
-		c.Emit("QueryServers", "hello world!")
+		backend.QueryServers(c)
+	})
+
+	server.On("ScanKeys", func(c *gosocketio.Channel, data interface{}) {
+		backend.ScanKeys(c, data)
 	})
 
 	http.HandleFunc("/socket.io/", func(w http.ResponseWriter, r *http.Request) {

@@ -9,7 +9,7 @@
                     <Input v-model="inputKey" placeholder="redis key..." style="width: 100%"></Input>
                 </div>
                 <ul>
-                    <li v-for="item in keys"><span class="layout-text" ><router-link :to="'/keys/'+ item">{{item}}</router-link></span></li>
+                    <li v-for="item in keys"><span class="layout-text" ><router-link :to=" '/serverid/'+ $route.params.serverid +'/keys/'+ item">{{item}}</router-link></span></li>
                 </ul>
             </Card>
         </Col>
@@ -26,10 +26,12 @@
         data(){
             return {
                 inputKey:"",
-                keys:[]
+                serverid:0,
+                keys: this.getKeys(),
             }
         },
         watch: {
+            '$route': 'reload',
             // 如果 question 发生改变，这个函数就会运行
             inputKey: function (newKey) {
                 this.getKeys();
@@ -37,12 +39,25 @@
         },
         methods: {
             getKeys: _.debounce(function(){
-                if (this.inputKey == "") {
-                    this.keys = [];
-                }else{
-                    this.keys = ["test1","test2"];
+                var info = {}
+                info.serverid = parseInt(this.$route.params.serverid);
+                info.data = this.inputKey;
+                this.$socket.emit("ScanKeys", info)
+            }, 500),
+            reload:  function(newRouter, oldRouter){
+                console.log("reloading....")
+                console.dir(this.$route.params)
+                this.serverid = this.$route.params.serverid;
+                this.inputKey = "";
+                this.getKeys();
+            },
+        },
+        socket:{
+            events:{
+                LoadKeys(keys){
+                    this.keys = keys
                 }
-            }, 500)
+            }
         }
 
        
