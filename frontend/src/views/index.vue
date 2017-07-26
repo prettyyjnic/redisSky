@@ -69,9 +69,9 @@
                         </Menu-item>
                     </Menu-group>
 
-                    <Menu-group title="Redis Servers">
+                    <Menu-group title="Servers">
                         <Menu-item :name="'Servers'+item.id" v-for="item in servers">
-                            <Icon type="ios-navigate" :size="iconSize"></Icon>
+                            <Icon type="ios-navigate"></Icon>
                             <Tooltip :content="item.host" placement="right-end">
                                 <span class="layout-text" >
                                     <router-link :to="'/serverid/'+ item.id +'/keys'">{{item.name}}</router-link>

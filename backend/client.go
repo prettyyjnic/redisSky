@@ -43,10 +43,11 @@ type dataStruct struct {
 
 // type redisValue
 type redisValue struct {
-	Key string      `json:"key"`
-	T   string      `json:"t"`
-	TTL int64       `json:"ttl"`
-	Val interface{} `json:"val"`
+	Key  string      `json:"key"`
+	T    string      `json:"t"`
+	TTL  int64       `json:"ttl"`
+	Size int64       `json:"size"`
+	Val  interface{} `json:"val"`
 }
 
 func (_redisValue redisValue) marshal() ([]byte, error) {
@@ -164,7 +165,7 @@ func sendCmdReceive(conn *gosocketio.Channel, data interface{}) {
 
 func checkRedisValue(conn *gosocketio.Channel, data interface{}) (c redis.Conn, _redisValue redisValue, b bool) {
 	if info, ok := checkOperData(conn, data); ok {
-		bytes, _ := json.Marshal(data)
+		bytes, _ := json.Marshal(info.Data)
 		var err error
 		err = json.Unmarshal(bytes, &_redisValue)
 		if err != nil {

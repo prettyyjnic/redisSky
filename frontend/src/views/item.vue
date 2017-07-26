@@ -15,22 +15,22 @@
 <template>
     <Row :gutter="16">
         <Col span="6">
-            <span :style="{width: '20%'}">{{type}}: </span><Input v-model="key" :style="{width: '80%'}"></Input>
+            <span :style="{width: '20%'}">{{dataValue.t}}: </span><Input v-model="dataValue.key" :style="{width: '80%'}"></Input>
         </Col>
         <Col span="8">            
-            <span>size: {{size}}</span>
-            <span>TTL: <Input v-model="ttl" :style="{width: '60%'}"></Input></span>
+            <span>size: {{dataValue.size}}</span>
+            <span>TTL: <Input v-model="dataValue.ttl" :style="{width: '60%'}"></Input></span>
         </Col>
         <Col span="10">
             <span :style="{float:'right'}">
                 <Button>Reload</Button>
-                <Button type="info">Set TTL</Button>
+                <Button @click="setTTL" type="info">Set TTL</Button>
                 <Button type="primary">Rename</Button>
                 <Button type="warning">Delete</Button>
             </span>
         </Col>
     
-        <Col span="24">
+        <Col span="24" :class="{'hidden': dataValue.t == 'string'}">
             <Row class="offset-top-10">
                 <Col span="17">
                     <Table border height="200" size="small" :columns="columns" :data="data" :highlight-row="true" @on-row-click="viewData" @on-current-change="selectRow"></Table>
@@ -44,10 +44,10 @@
                         :loading="true"
                         @on-ok="addRow">
                         <Form :model="newItem" :label-width="80">
-                            <Form-item label="score" :class="{'hidden': type != 'zset'}">
+                            <Form-item label="score" :class="{'hidden': dataValue.t != 'zset'}">
                                 <Input-number class="width100" v-model="newItem.score" type="text" placeholder="please input score..."></Input-number>
                             </Form-item>
-                            <Form-item label="field" :class="{'hidden': type != 'hash'}">
+                            <Form-item label="field" :class="{'hidden': dataValue.t != 'hash'}">
                                 <Input v-model="newItem.field" type="textarea" :autosize="{minRows: 2,maxRows: 2}" placeholder="please input field..."></Input>
                             </Form-item>
                             <Form-item label="value">
@@ -62,7 +62,7 @@
                         <span v-else>Loading...</span>
                     </Button>
 
-                    <Input class="offset-top-10 offset-left-10" v-model="searchField" placeholder="search field remote..."></Input>
+                    <Input class="offset-top-10 offset-left-10" :class="{'hidden': dataValue.t == 'list'}" v-model="searchField" placeholder="search field remote..."></Input>
                     <Input class="offset-top-10 offset-left-10" v-model="searchKey" placeholder="search local..."></Input>
 
                     <Col class="offset-top-10 offset-left-10" span="24">
@@ -73,14 +73,14 @@
             </Row>
         </Col>
 
-        <Col span="24" :class="{'hidden': type != 'zset'}">
+        <Col span="24" :class="{'hidden': dataValue.t != 'zset'}">
             <Row class="offset-top-10">
                 <Col span="24">Score:</Col>
                 <Col span="24"><Input :disabled="!selectedRow" v-model="score"></Input></Col>
             </Row>
         </Col>
 
-        <Col span="24" :class="{'hidden': type != 'hash'}">
+        <Col span="24" :class="{'hidden': dataValue.t != 'hash'}">
             <Row class="offset-top-10">
                 <Col span="16">
                     <p>field({{fieldBytes}} bytes): </p>
@@ -116,7 +116,7 @@
                 </Col>
             </Row>
             <Row class="offset-top-10">
-                <Input :disabled="!selectedRow" v-model="val" type="textarea" :autosize="{minRows: 10,maxRows: 50}"></Input>
+                <Input :disabled="dataValue.t != 'string' && !selectedRow" v-model="editVal" type="textarea" :autosize="{minRows: dataValue.t == 'string' ? 20 : 10,maxRows: 50}"></Input>
             </Row>
         </Col>
 
@@ -132,14 +132,23 @@
     export default {
         data(){
             return {
+                server: {
+                    id: 0,
+                    db: 0,                    
+                },
+                dataValue:{
+                    key: "",
+                    t: "list",
+                    ttl: -1,
+                    val: {}
+                },
                 key: "",
-                type: "list",
-                field: "field",
+                field: "",
                 valueType: "Text",
                 fieldType: "Text",
                 searchKey: "",
                 searchField: "",
-                val: '',
+                editVal: '',
                 addRowModal: false,
                 size: 10000,
                 score: 1,
@@ -148,10 +157,14 @@
                 removeBtnLoading: false,
                 addRowLoading: true,
                 columns: [
+                    {
+                        title: 'row',
+                        ellipsis: true,
+                        type: 'index',
+                        width: '15%',
+                    }
                 ],
-                data: [{ field:"xxx", val:'{"hello":"val"}', score: 1},{ field:"xxx2", val:"val2", score: 111}],
-                totalData: [],
-                ttl: 1,
+                data: [],
                 newItem: {
                     field: '',
                     value: '',
@@ -164,19 +177,20 @@
                 return this.getBytes(this.field);
             },
             valueBytes: function(){                
-                return this.getBytes(this.val);
+                return 0;
+                return this.getBytes(this.editVal);
             }
         },
         created () {
             // 组件创建完后获取数据，
             // 此时 data 已经被 observed 了
-            this.fetchData();
+            this.routeReload();
         },
         watch: {
             // 如果路由有变化，会再次执行该方法
-            '$route': 'fetchData',
+            '$route': 'routeReload',
             valueType: function(){
-                this.formatVal(this.val);
+                this.formatVal(this.editVal);
             },
             fieldType: function(){
                 if (this.fieldType == 'Json') {
@@ -186,14 +200,15 @@
                 }                 
             },
             searchKey: function(){
+                if (this.dataValue.t == "string") {return}
                 if (this.searchKey == "") {
-                    this.data = this.totalData;
-                }                
+                    this.data = this.dataValue.val;
+                }
                 var tmp = [];
                 var reg = new RegExp(this.searchKey)
-                for (var i = 0; i < this.totalData.length; i++) {
-                    if (reg.test(this.totalData[i].field) || reg.test(this.totalData[i].val) ) {
-                        tmp.push(this.totalData[i]);
+                for (var i = 0; i < this.dataValue.val.length; i++) {
+                    if (reg.test(this.dataValue.val[i].field) || reg.test(this.dataValue.val[i].val) ) {
+                        tmp.push(this.dataValue.val[i]);
                     }
                 }
                 this.data = tmp;
@@ -202,7 +217,7 @@
                 if (this.selectedRow === false) {
                     this.score = 0;
                     this.field = "";
-                    this.val = "";
+                    this.editVal = "";
                 }else{
                     this.score = this.selectedRow.score;
                     this.field = this.selectedRow.field;
@@ -211,6 +226,33 @@
             }
         },
         methods: {
+            routeReload(){
+                this.dataValue.key = this.key = this.$route.params.key;
+                this.fetchData();
+            },
+            checkKeyChanged(){
+                if (this.dataValue.key == ""){
+                    return false;
+                }
+                if (this.key != this.dataValue.key){
+                    this.$Message.error("key is changed, please rename first!");
+                    return false;
+                }
+                return true;
+            },
+            getReqData(){
+                var info = {};
+                info.db = parseInt(this.server.db);
+                info.serverid = parseInt( this.server.id );
+                info.data = this.dataValue;
+                return info;
+            },
+            setTTL: function(){
+                if (checkKeyChanged()) {
+                    var info = this.getReqData();                    
+                    this.$socket.emit("SetTTL", info)
+                }
+            },
             addRow: function(){
                 var that = this;
                 setTimeout(function(){
@@ -220,49 +262,21 @@
             },
             formatVal: function(val){
                 if (this.valueType == 'Json') {
-                    this.val = this.format(val)
+                    this.editVal = this.format(val)
                 }else if(this.valueType == 'Text'){
-                    this.val = this.format(val, true)
+                    this.editVal = this.format(val, true)
                 }
             },
             viewData: function (info){
-                this.val = this.valueType == 'Json' ? this.format(info.val) : this.format(info.val, true);
+                this.formatVal(info.val);
                 this.field = info.field;
             },
             fetchData(){
-                this.key = this.$route.params.key;
+                this.server.id = this.$route.params.serverid;
+                this.server.db = this.$route.params.db;
+                var info = this.getReqData();
+                this.$socket.emit("GetKey", info)
                 // ajax 获取数据
-                this.totalData = this.data;
-
-                this.columns = [
-                    {
-                        title: 'row',
-                        // key: 'row',
-                        ellipsis: true,
-                        type: 'index',
-                        width: '10%',
-                    },{
-                        title: 'val',
-                        key: 'val',
-                        ellipsis: true,
-                    }
-                ];
-
-                if (this.type == 'hash') {
-                    this.columns.splice(1, 0, {
-                        title: 'field',
-                        key: 'field',
-                        ellipsis: true,                        
-                    });
-                }
-                if (this.type == 'zset') {
-                    this.columns.splice(1, 0, {
-                        title: 'score',
-                        key: 'score',
-                        sortable: true,
-                        width: '10%',                      
-                    });
-                }
             },
             removeRow () {
                 if (this.removeBtnLoading == true) {return;}                
@@ -274,8 +288,8 @@
                     }                    
                 }
                 for (var i = 0; i < this.data.length ; i++) {
-                    if (this.totalData[i]['field'] == this.selectedRow['field']) {
-                        this.totalData.splice(i, 1);                        
+                    if (this.dataValue.val[i]['field'] == this.selectedRow['field']) {
+                        this.dataValue.val.splice(i, 1);                        
                     }
                 }
                 this.removeBtnLoading = false;
@@ -332,6 +346,56 @@
                 return draw.join('');     
             }
 
+        },
+        socket:{
+            events:{
+                ReloadTTL(ttl){
+                    this.dataValue.ttl = ttl;
+                },
+                ShowRedisValue(redisValue){                    
+                    this.dataValue = redisValue;
+                    this.$route.params.key = this.key = redisValue.key;
+                    this.editVal = "";
+                    this.data = [];
+                    this.selectedRow = false;
+                    switch (redisValue.t){
+                        case "string":
+                            this.editVal = redisValue.val;
+                            break;
+                        default:
+                            this.data = redisValue.val;
+                    }
+                  
+                    this.columns = [
+                        {
+                            title: 'row',
+                            ellipsis: true,
+                            type: 'index',
+                            width: '15%',
+                        },{
+                            title: 'val',
+                            key: 'val',
+                            ellipsis: true,
+                        }
+                    ];
+
+                    if (redisValue.t == 'hash') {
+                        this.columns.splice(1, 0, {
+                            title: 'field',
+                            key: 'field',
+                            ellipsis: true,                        
+                        });
+                    }
+                    if (redisValue.t == 'zset') {
+                        this.columns.splice(1, 0, {
+                            title: 'score',
+                            key: 'score',
+                            sortable: true,
+                            width: '20%',                      
+                        });
+                    }
+                }
+            }
         }
 
     }

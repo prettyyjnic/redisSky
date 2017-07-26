@@ -34,7 +34,7 @@ const routers = [{
 		    component: (resolve) => require(['./views/keys.vue'], resolve),
 		    children: [
 		    	{
-		    		path: '/serverid/:serverid/keys/:key',
+		    		path: '/serverid/:serverid/db/:db/key/:key',
 		    		component: (resolve) => require(['./views/item.vue'], resolve)
 		    	}
 		    ]

@@ -9,7 +9,7 @@
         {
             "ID"   : 1,
             "Name" : "localhost",
-            "Host" : "localhost",
+            "Host" : "172.27.40.17",
             "Port" : 6379,
             "DBNums":15,
             "Auth" : ""

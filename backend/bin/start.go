@@ -47,6 +47,10 @@ func main() {
 		backend.ScanKeys(c, data)
 	})
 
+	server.On("GetKey", func(c *gosocketio.Channel, data interface{}) {
+		backend.GetKey(c, data)
+	})
+
 	http.HandleFunc("/socket.io/", func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		w.Header().Set("Access-Control-Allow-Origin", origin)

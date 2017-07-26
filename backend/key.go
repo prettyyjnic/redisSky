@@ -124,40 +124,108 @@ func GetKey(conn *gosocketio.Channel, data interface{}) {
 					sendCmdError(conn, err.Error())
 					return
 				}
+				sendCmdReceive(conn, s)
+				_redisValue.Size = 1
 				_redisValue.Val = s
 			case "list":
-				cmd = "LRANGE 0 " + strconv.Itoa(_globalConfigs.System.RowScanLimits)
-				list, err := redis.Strings(c.Do("LRANGE", 0, _globalConfigs.System.RowScanLimits))
+				cmd = "LRANGE " + key + " 0 " + strconv.Itoa(_globalConfigs.System.RowScanLimits)
+				sendCmd(conn, cmd)
+				list, err := redis.Strings(c.Do("LRANGE", key, 0, _globalConfigs.System.RowScanLimits))
 				if err != nil {
 					sendCmdError(conn, err.Error())
 					return
 				}
-				_redisValue.Val = list
+				cmd = "LLEN " + key
+				sendCmd(conn, cmd)
+				l, err := redis.Int64(c.Do("LLEN", key))
+				if err != nil {
+					sendCmdError(conn, err.Error())
+					return
+				}
+				sendCmdReceive(conn, l)
+				_redisValue.Size = l
+				_redisValue.Val = formatSetAndList(list)
 			case "set":
 				_, vals := scan(conn, c, key, field, setScan, 0)
-				_redisValue.Val = vals
+
+				cmd = "SCARD " + key
+				sendCmd(conn, cmd)
+				l, err := redis.Int64(c.Do("SCARD", key))
+				if err != nil {
+					sendCmdError(conn, err.Error())
+					return
+				}
+				sendCmdReceive(conn, l)
+				_redisValue.Size = l
+				_redisValue.Val = formatSetAndList(vals)
 			case "zset", "hash":
 				var method scanType
+				var lenMethod string
 				if t == "zset" {
 					method = zsetScan
+					lenMethod = "ZCOUNT"
 				} else {
+					lenMethod = "HLEN"
 					method = hashScan
 				}
 				_, vals := scan(conn, c, key, field, method, 0)
-				tmp := make(map[string]string)
-				for i := 0; i < len(vals); i = i + 2 {
-					tmp[vals[0]] = vals[1]
+				cmd = lenMethod + " " + key
+				var l int64
+				var err error
+				if t == "zset" {
+					_redisValue.Val = formatZset(vals)
+					cmd += " -inf +inf"
+					sendCmd(conn, cmd)
+					l, err = redis.Int64(c.Do(lenMethod, key, "-inf", "+inf"))
+				} else {
+					_redisValue.Val = formatHash(vals)
+					sendCmd(conn, cmd)
+					l, err = redis.Int64(c.Do(lenMethod, key))
 				}
-				_redisValue.Val = tmp
+
+				if err != nil {
+					sendCmdError(conn, err.Error())
+					return
+				}
+				sendCmdReceive(conn, l)
+				_redisValue.Size = l
 			}
-			val, err := _redisValue.marshal()
-			if err != nil {
-				sendCmdError(conn, "marshal err:"+err.Error())
-				return
-			}
-			conn.Emit("ShowRedisValue", val)
+
+			conn.Emit("ShowRedisValue", _redisValue)
 		}
 	}
+}
+
+func formatSetAndList(datas []string) []map[string]string {
+	tmp := make([]map[string]string, 0, 100)
+	for i := 0; i < len(datas); i++ {
+		row := make(map[string]string)
+		row["val"] = datas[i]
+		tmp = append(tmp, row)
+	}
+	return tmp
+}
+
+func formatHash(datas []string) []map[string]string {
+	tmp := make([]map[string]string, 0, 100)
+	for i := 0; i < len(datas); i = i + 2 {
+		row := make(map[string]string)
+		row["field"] = datas[i]
+		row["val"] = datas[i+1]
+		tmp = append(tmp, row)
+	}
+	return tmp
+}
+
+func formatZset(datas []string) []map[string]interface{} {
+	tmp := make([]map[string]interface{}, 0, 100)
+	for i := 0; i < len(datas); i = i + 2 {
+		row := make(map[string]interface{})
+		row["val"] = datas[i]
+		row["score"], _ = strconv.ParseFloat(datas[i+1], 10)
+		tmp = append(tmp, row)
+	}
+	return tmp
 }
 
 // SetTTL set ttl

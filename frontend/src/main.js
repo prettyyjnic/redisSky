@@ -13,7 +13,7 @@ Vue.use(Vuex);
 
 Vue.use(iView);
 
-Vue.use(VueWebsocket, "ws://localhost:8090/", {
+Vue.use(VueWebsocket, "ws://172.27.40.6:8090/", {
     reconnection: true,
     transports: ['websocket']
 });

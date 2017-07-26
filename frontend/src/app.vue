@@ -25,7 +25,7 @@
                     console.log("log:", data);
                 },
                 cmdErr(data){
-                    this.$Message.error(data);
+                    this.$Message.error(data, 2000);
                 },
                 cmdReceive(data){
                     console.log("receive:", data)
