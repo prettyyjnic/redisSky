@@ -85,7 +85,7 @@ func DelKey(conn *gosocketio.Channel, data interface{}) {
 
 			}
 
-			conn.Emit("DelKey", _redisValue.Key)
+			conn.Emit("ReloadKeys", nil)
 		}
 	}
 }
@@ -217,7 +217,7 @@ func DelRow(conn *gosocketio.Channel, data interface{}) {
 				sendCmdError(conn, "key: "+key+" is not exists")
 			case "string":
 				sendCmdError(conn, "string don not support this func")
-			case "set", "zset":
+			case "set", "zset", "hash":
 				val, ok := (_redisValue.Val).(string)
 				if !ok {
 					sendCmdError(conn, "val should be string")
@@ -225,16 +225,11 @@ func DelRow(conn *gosocketio.Channel, data interface{}) {
 				}
 				if t == "set" {
 					srem(conn, c, key, val)
-				} else {
+				} else if t == "zset" {
 					zrem(conn, c, key, val)
+				} else {
+					hdel(conn, c, key, val)
 				}
-			case "hash":
-				val, ok := (_redisValue.Val).(string)
-				if !ok {
-					sendCmdError(conn, "val should be string")
-					return
-				}
-				hdel(conn, c, _redisValue.Key, val)
 			case "list":
 				bytes, _ := json.Marshal(_redisValue.Val)
 				var _val dataStruct
@@ -243,14 +238,14 @@ func DelRow(conn *gosocketio.Channel, data interface{}) {
 					sendCmdError(conn, "val should be dataStruct")
 					return
 				}
-				oldVal, ok := (_val.OldVal.Val).(string)
-				if ok == false {
-					sendCmdError(conn, "oldval should be string")
-					return
-				}
+				oldVal := _val.OldVal.Val
 				if vals, ok := lrange(conn, c, _redisValue.Key, _val.Index, _val.Index); ok {
-					if len(vals) != 0 || len(vals) > 1 {
+					if len(vals) == 0 {
 						sendCmdError(conn, "the index of the list is empty")
+						return
+					}
+					if len(vals) != 1 {
+						sendCmdError(conn, "error vals")
 						return
 					}
 					// check the field is modify already
@@ -279,12 +274,8 @@ func DelRow(conn *gosocketio.Channel, data interface{}) {
 					sendCmdReceive(conn, r)
 				}
 			}
-			val, err := _redisValue.marshal()
-			if err != nil {
-				sendCmdError(conn, "marshal err:"+err.Error())
-				return
-			}
-			conn.Emit("DelRow", val)
+
+			conn.Emit("DelRow", 0)
 		}
 	}
 }

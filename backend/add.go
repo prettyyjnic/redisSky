@@ -59,7 +59,7 @@ func AddKey(conn *gosocketio.Channel, data interface{}) {
 			return
 		}
 
-		conn.Emit("ReloadKey", _redisValue.Key)
+		conn.Emit("ReloadKeys", _redisValue.Key)
 	}
 }
 
@@ -73,8 +73,8 @@ func zadd(conn *gosocketio.Channel, c redis.Conn, _redisValue redisValue) bool {
 	var cmd string
 	for k, v := range vals {
 		kind := reflect.ValueOf(v).Kind()
-		if kind != reflect.Int64 && kind != reflect.Int && kind != reflect.String {
-			sendCmdError(conn, "val should be map of string -> int or string -> string")
+		if kind != reflect.Int64 && kind != reflect.Int && kind != reflect.String && kind != reflect.Float64 {
+			sendCmdError(conn, "val should be map of string -> int or string -> string, now is string -> "+kind.String())
 			return false
 		}
 
@@ -168,12 +168,8 @@ func AddRow(conn *gosocketio.Channel, data interface{}) {
 						return
 					}
 				}
-				message, err := _redisValue.marshal()
-				if err != nil {
-					sendCmdError(conn, "marshal error:"+err.Error())
-					return
-				}
-				conn.Emit("AddRow", message)
+				conn.Emit("ReloadValue", 1)
+				return
 			}
 		}
 		sendCmdError(conn, "type "+t+" does not support")

@@ -53,8 +53,8 @@ func init() {
 
 func saveConf() error {
 	data, err := json.Marshal(_globalConfigs)
-	if err != nil {
-		logErr(err)
+	logErr(err)
+	if err == nil {
 		err = ioutil.WriteFile(_configFilePath, data, 0755)
 	}
 	return err

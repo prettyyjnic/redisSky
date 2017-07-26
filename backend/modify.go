@@ -17,6 +17,7 @@ func lrange(conn *gosocketio.Channel, c redis.Conn, key string, start int, end i
 		sendCmdError(conn, "redis err:"+err.Error())
 		return nil, false
 	}
+	sendCmdReceive(conn, vals)
 	return vals, true
 }
 
@@ -48,102 +49,68 @@ func ModifyKey(conn *gosocketio.Channel, data interface{}) {
 			default:
 				bytes, _ := json.Marshal(_redisValue.Val)
 				var _val dataStruct
-				err := json.Unmarshal(bytes, &_val)
+				var err error
+				err = json.Unmarshal(bytes, &_val)
 				if err != nil {
 					sendCmdError(conn, "val should be dataStruct")
 					return
 				}
+				oldVal := &(_val.OldVal)
+				newVal := &(_val.NewVal)
 				switch t {
 				case "list":
-					oldVal, ok := (_val.OldVal.Val).(string)
-					if ok == false {
-						sendCmdError(conn, "oldval should be string")
-						return
-					}
-					newVal, ok := (_val.NewVal.Val).(string)
-					if ok == false {
-						sendCmdError(conn, "newVal should be string")
-						return
-					}
 					if vals, ok := lrange(conn, c, _redisValue.Key, _val.Index, _val.Index); ok {
-						if len(vals) != 0 || len(vals) > 1 {
+						if len(vals) != 1 {
 							sendCmdError(conn, "the index of the list is empty")
 							return
 						}
 						var valInRedis = vals[0]
-						if oldVal != valInRedis {
-							sendCmdError(conn, "your value: "+valInRedis+" does not match "+oldVal)
+						if oldVal.Val != valInRedis {
+							sendCmdError(conn, "your value: "+valInRedis+" does not match "+oldVal.Val)
 							return
 						}
-						cmd = fmt.Sprintf("LSET %s %d %s", _redisValue.Key, _val.Index, newVal)
+						cmd = fmt.Sprintf("LSET %s %d %s", _redisValue.Key, _val.Index, newVal.Val)
 						sendCmd(conn, cmd)
-						r, err := c.Do("LSET", _redisValue.Key, _val.Index, newVal)
+						r, err := c.Do("LSET", _redisValue.Key, _val.Index, newVal.Val)
 						if err != nil {
 							sendCmdError(conn, err.Error())
 							return
 						}
 						sendCmdReceive(conn, r)
 					}
-
 				case "set":
-					oldVal, ok := (_val.OldVal.Val).(string)
-					if ok == false {
-						sendCmdError(conn, "oldval should be string")
-						return
-					}
-					newVal, ok := (_val.NewVal.Val).(string)
-					if ok == false {
-						sendCmdError(conn, "newVal should be string")
-						return
-					}
-					srem(conn, c, _redisValue.Key, oldVal)
-					cmd = fmt.Sprintf("SADD %s %s", _redisValue.Key, newVal)
-					r, err := c.Do("SADD", _redisValue.Key, newVal)
+					srem(conn, c, _redisValue.Key, oldVal.Val)
+					cmd = fmt.Sprintf("SADD %s %s", _redisValue.Key, newVal.Val)
+					r, err := c.Do("SADD", _redisValue.Key, newVal.Val)
 					if err != nil {
 						sendCmdError(conn, "val should be dataStruct")
 						return
 					}
 					sendCmdReceive(conn, r)
 				case "zset":
-					oldVal, ok := (_val.OldVal.Val).(map[string]int)
-					if ok == false || oldVal == nil || len(oldVal) == 0 || len(oldVal) > 1 {
-						sendCmdError(conn, "oldval should be map")
+					if oldVal.Val != newVal.Val {
+						zrem(conn, c, _redisValue.Key, oldVal.Val)
+					}
+					cmd = fmt.Sprintf("ZADD %s %d %s", _redisValue.Key, newVal.Score, newVal.Val)
+					sendCmd(conn, cmd)
+					r, err := c.Do("ZADD", _redisValue.Key, newVal.Score, newVal.Val)
+					if err != nil {
+						sendCmdError(conn, "redis err "+err.Error())
 						return
 					}
-					newVal, ok := (_val.NewVal.Val).(map[string]int)
-					if ok == false || newVal == nil || len(newVal) == 0 || len(newVal) > 1 {
-						sendCmdError(conn, "newVal should be map")
-						return
-					}
-					for v := range oldVal {
-						zrem(conn, c, _redisValue.Key, v)
-					}
-					for v, score := range newVal {
-						cmd = fmt.Sprintf("ZADD %s %d %s", _redisValue.Key, score, v)
-						sendCmd(conn, cmd)
-						r, err := c.Do("ZADD", _redisValue.Key, score, v)
-						if err != nil {
-							sendCmdError(conn, "redis err"+err.Error())
-							return
-						}
-						sendCmdReceive(conn, r)
-					}
+					sendCmdReceive(conn, r)
 				case "hash":
-					newVal, ok := (_val.NewVal.Val).(map[string]string)
-					if ok == false || newVal == nil || len(newVal) == 0 || len(newVal) > 1 {
-						sendCmdError(conn, "newVal should be map")
+					if oldVal.Val != newVal.Val {
+						hdel(conn, c, _redisValue.Key, oldVal.Field)
+					}
+					cmd = fmt.Sprintf("HSET %s %s %s", _redisValue.Key, newVal.Field, newVal.Val)
+					sendCmd(conn, cmd)
+					r, err := c.Do("HSET", _redisValue.Key, newVal.Field, newVal.Val)
+					if err != nil {
+						sendCmdError(conn, "redis err"+err.Error())
 						return
 					}
-					for field, v := range newVal {
-						cmd = fmt.Sprintf("HSET %s %s %s", _redisValue.Key, field, v)
-						sendCmd(conn, cmd)
-						r, err := c.Do("HSET", _redisValue.Key, field, v)
-						if err != nil {
-							sendCmdError(conn, "redis err"+err.Error())
-							return
-						}
-						sendCmdReceive(conn, r)
-					}
+					sendCmdReceive(conn, r)
 				default:
 					sendCmdError(conn, "type is unknown")
 				}

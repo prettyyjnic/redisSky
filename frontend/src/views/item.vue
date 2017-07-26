@@ -15,7 +15,7 @@
 <template>
     <Row :gutter="16">
         <Col span="6">
-            <span :style="{width: '20%'}">{{dataValue.t}}: </span><Input v-model="dataValue.key" :style="{width: '80%'}"></Input>
+            <span :style="{width: '20%'}">{{dataValue.t}}: </span><Input v-model="key" :style="{width: '80%'}"></Input>
         </Col>
         <Col span="8">            
             <span>size: {{dataValue.size}}</span>
@@ -23,10 +23,10 @@
         </Col>
         <Col span="10">
             <span :style="{float:'right'}">
-                <Button>Reload</Button>
+                <Button @click="routeReload">Reload</Button>
                 <Button @click="setTTL" type="info">Set TTL</Button>
-                <Button type="primary">Rename</Button>
-                <Button type="warning">Delete</Button>
+                <Button @click="rename" type="primary">rename</Button>
+                <Button @click="deleteKey" type="warning">Delete</Button>
             </span>
         </Col>
     
@@ -55,11 +55,10 @@
                             </Form-item> 
                         </Form>
                     </Modal>
-                    <Button class="offset-top-10 offset-left-10" type="ghost" long @click="removeRow" :loading="removeBtnLoading">
-                        <span v-if="!removeBtnLoading">
+                    <Button class="offset-top-10 offset-left-10" type="ghost" long @click="delRow" >
+                        <span>
                             <Icon type="android-delete" :color="'red'"></Icon>Delete Row
                         </span>
-                        <span v-else>Loading...</span>
                     </Button>
 
                     <Input class="offset-top-10 offset-left-10" :class="{'hidden': dataValue.t == 'list'}" v-model="searchField" placeholder="search field remote..."></Input>
@@ -122,7 +121,7 @@
 
         <Col span="24">
             <Row class="offset-top-10">
-                <Button type="info" :style="{float:'right'}">Save</Button>
+                <Button @click="modifyValue" type="info" :style="{float:'right'}">Save</Button>
             </Row>
         </Col>
     </Row>
@@ -177,7 +176,6 @@
                 return this.getBytes(this.field);
             },
             valueBytes: function(){                
-                return 0;
                 return this.getBytes(this.editVal);
             }
         },
@@ -213,6 +211,9 @@
                 }
                 this.data = tmp;
             },
+            searchField: function(){
+                this.scanRemote();
+            },
             selectedRow: function(){
                 if (this.selectedRow === false) {
                     this.score = 0;
@@ -226,7 +227,15 @@
             }
         },
         methods: {
+            scanRemote: _.debounce(function(){
+                var info = this.getReqData(); 
+                info.data.val = this.searchField;
+                this.$socket.emit("ScanRemote", info)
+            }, 200),
             routeReload(){
+                this.editVal = "";
+                this.data = [];
+                this.selectedRow = false;
                 this.dataValue.key = this.key = this.$route.params.key;
                 this.fetchData();
             },
@@ -245,20 +254,60 @@
                 info.db = parseInt(this.server.db);
                 info.serverid = parseInt( this.server.id );
                 info.data = this.dataValue;
+                info.data.ttl = parseInt(info.data.ttl);
                 return info;
             },
             setTTL: function(){
-                if (checkKeyChanged()) {
-                    var info = this.getReqData();                    
-                    this.$socket.emit("SetTTL", info)
+                if (this.checkKeyChanged()) {
+                    this.$Modal.confirm({
+                        content: '<p>Sure set ttl to '+this.dataValue.ttl+'?</p>',
+                        onOk: () => {
+                            var info = this.getReqData();                    
+                            this.$socket.emit("SetTTL", info)
+                        }
+                    });
+                }
+            },
+            rename: function(){
+                this.$Modal.confirm({
+                    content: '<p>Sure rename to '+this.key+'?</p>',
+                    onOk: () => {
+                        var info = this.getReqData();
+                        info.data.val = this.key;        
+                        this.$socket.emit("Rename", info)
+                    }
+                });
+            },
+            deleteKey: function(){
+                if (this.checkKeyChanged()) {
+                    this.$Modal.confirm({
+                        content: '<p>Sure delete '+this.key+'? This could not be recoverd</p>',
+                        onOk: () => {
+                            var info = this.getReqData();
+                            this.$socket.emit("DelKey", info)
+                        }
+                    });
                 }
             },
             addRow: function(){
-                var that = this;
-                setTimeout(function(){
-                    that.addRowModal = false;
-                    that.$Message.info('success!');
-                }, 1000)
+                if (this.checkKeyChanged()) {
+                    var info = this.getReqData();
+                    this.addRowModal = false;
+                    if (info.data.t == 'set' || info.data.t == 'list') {
+                        info.data.val = this.newItem.value;
+                    }else if(info.data.t == 'zset'){
+                        info.data.val = {}
+                        info.data.val[this.newItem.value] = this.newItem.score;
+                    }else if(info.data.t == 'hash'){
+                        info.data.val = {}
+                        info.data.val[this.newItem.field] = this.newItem.value;
+                    }else{
+                        this.$Message.error("unSupport type : "+ this.data.t, 2000);
+                        return;
+                    }
+                    this.$socket.emit("AddRow", info)
+                }
+                
             },
             formatVal: function(val){
                 if (this.valueType == 'Json') {
@@ -278,26 +327,85 @@
                 this.$socket.emit("GetKey", info)
                 // ajax 获取数据
             },
-            removeRow () {
-                if (this.removeBtnLoading == true) {return;}                
-                this.removeBtnLoading = true;
-                // ajax 请求删除
-                for (var i = 0; i < this.data.length ; i++) {
-                    if (this.data[i]['field'] == this.selectedRow['field']) {
-                        this.data.splice(i, 1);                        
-                    }                    
-                }
-                for (var i = 0; i < this.data.length ; i++) {
-                    if (this.dataValue.val[i]['field'] == this.selectedRow['field']) {
-                        this.dataValue.val.splice(i, 1);                        
+            delRow () {
+                var info = this.getReqData();
+                if (info.data.t == 'set' || info.data.t == 'zset') {
+                    info.data.val = this.format(this.selectedRow.val, true);
+                }else if(info.data.t == 'hash'){
+                    info.data.val = this.format(this.selectedRow.field, true);                    
+                }else if(info.data.t == 'list'){
+                    var tmp = {}
+                    tmp.index = this.selectedRow.index;
+                    tmp.oldVal = {
+                        key: this.key,
+                        val: this.selectedRow.val
                     }
+                    info.data.val = tmp
+                }else{
+                    this.$Message.error("unSupport type : "+ this.data.t, 2000);
+                    return;
                 }
-                this.removeBtnLoading = false;
+                this.$socket.emit("DelRow", info);
+            },
+            modifyValue(){
+                var info = this.getReqData();
+                var newVal = this.format(this.editVal, true);
+                if (info.data.t == 'string'){
+                    info.data.val = newVal
+                }else if (info.data.t =='set'){
+                    var tmp = {};
+                    tmp.oldVal = {
+                        val: this.selectedRow.val
+                    }
+                    tmp.newVal = {
+                        val: newVal
+                    }
+                    info.data.val = tmp
+                }else if (info.data.t == 'zset') {
+                    var tmp = {};
+                    tmp.oldVal = {
+                        field: "",
+                        score: this.selectedRow.score,
+                        val: this.selectedRow.val
+                    }
+                    tmp.newVal = {
+                        field: "",
+                        score: parseInt(this.score),
+                        val: newVal
+                    }
+                    info.data.val = tmp
+                }else if(info.data.t == 'hash'){
+                    var tmp = {};
+                    tmp.oldVal = {
+                        field: this.selectedRow.field,
+                        val: this.selectedRow.val
+                    }
+                    tmp.newVal = {
+                        field: this.field,
+                        val: newVal
+                    }
+                    info.data.val = tmp
+                }else if(info.data.t == 'list'){
+                    var tmp = {};
+                    tmp.index = this.selectedRow.index;
+                    tmp.oldVal = {
+                        val: this.selectedRow.val
+                    }
+                    tmp.newVal = {
+                        val: this.editVal
+                    }
+                    info.data.val = tmp
+                }else{
+                    this.$Message.error("unSupport type : "+ this.data.t, 2000);
+                    return;
+                }
+                this.$socket.emit("ModifyKey", info);
             },
             selectRow (currentRow, oldCurrentRow){
                 this.selectedRow = currentRow;
             },
-            getBytes: function(str){  
+            getBytes: function(str){ 
+                if (typeof(str) == 'undefined') return 0; 
                 var realLength = 0;  
                 for (var i = 0; i < str.length; i++){  
                     var charCode = str.charCodeAt(i);  
@@ -310,6 +418,7 @@
             },
             format: function format(txt,compress/*是否为压缩模式*/){/* 格式化JSON源码(对象转换为JSON文本) */
                 // 参考 http://blog.csdn.net/macwhirr123/article/details/50686841
+                if ( typeof(txt) == 'undefined' ) return '';
                 var indentChar = '    ';     
                 if(/^\s*$/.test(txt)){
                     return '';     
@@ -352,20 +461,23 @@
                 ReloadTTL(ttl){
                     this.dataValue.ttl = ttl;
                 },
-                ShowRedisValue(redisValue){                    
+                ReloadValue(){
+                    this.routeReload();
+                },
+                ReloadName(newKey){
+                    this.$route.params.key = this.key = newKey;
+                },
+                ReloadDatas(vals){
+                    this.data = vals;
+                },
+                ShowRedisValue(redisValue){
+                    this.newItem = {
+                        field: '',
+                        value: '',
+                        score:0
+                    };
                     this.dataValue = redisValue;
                     this.$route.params.key = this.key = redisValue.key;
-                    this.editVal = "";
-                    this.data = [];
-                    this.selectedRow = false;
-                    switch (redisValue.t){
-                        case "string":
-                            this.editVal = redisValue.val;
-                            break;
-                        default:
-                            this.data = redisValue.val;
-                    }
-                  
                     this.columns = [
                         {
                             title: 'row',
@@ -383,7 +495,7 @@
                         this.columns.splice(1, 0, {
                             title: 'field',
                             key: 'field',
-                            ellipsis: true,                        
+                            ellipsis: true,
                         });
                     }
                     if (redisValue.t == 'zset') {
@@ -394,6 +506,16 @@
                             width: '20%',                      
                         });
                     }
+                    switch (redisValue.t){
+                        case "string":
+                            this.editVal = redisValue.val;
+                            break;
+                        default:
+                            this.data = redisValue.val;
+                    }
+                },
+                DelRow(){
+                    this.routeReload();
                 }
             }
         }

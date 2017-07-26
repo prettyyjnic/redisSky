@@ -30,6 +30,13 @@
                 cmdReceive(data){
                     console.log("receive:", data)
                 },
+                tip(type, msg){
+                    this.$Message[type]({
+                        content: msg,
+                        duration: 10,
+                        closable: true
+                    })
+                },
                 ShowServers(servers){
                     this.$store.dispatch('saveServers', servers);
                 }

@@ -87,6 +87,42 @@ func ScanKeys(conn *gosocketio.Channel, data interface{}) {
 	}
 }
 
+// ScanRemote scan remote
+func ScanRemote(conn *gosocketio.Channel, data interface{}) {
+	if c, _redisValue, ok := checkRedisValue(conn, data); ok {
+		defer c.Close()
+		var key = _redisValue.Key
+		field, ok := (_redisValue.Val).(string)
+		if !ok {
+			sendCmdError(conn, "val should be string")
+			return
+		}
+		if t, err := keyType(conn, c, key); err == nil {
+			if t == "none" {
+				sendCmdError(conn, "key is not exists")
+				return
+			}
+			switch t {
+			case "string", "list":
+				sendCmdError(conn, t+" not support this method!")
+				return
+			case "set":
+				_, vals := scan(conn, c, key, field, setScan, 0)
+				conn.Emit("ReloadDatas", formatSetAndList(vals))
+			case "zset":
+				_, vals := scan(conn, c, key, field, zsetScan, 0)
+				conn.Emit("ReloadDatas", formatZset(vals))
+			case "hash":
+				_, vals := scan(conn, c, key, field, hashScan, 0)
+				conn.Emit("ReloadDatas", formatHash(vals))
+			default:
+				sendCmdError(conn, "underfined type:"+t)
+				return
+			}
+		}
+	}
+}
+
 // GetKey get value of the key
 func GetKey(conn *gosocketio.Channel, data interface{}) {
 	if c, _redisValue, ok := checkRedisValue(conn, data); ok {
@@ -196,11 +232,12 @@ func GetKey(conn *gosocketio.Channel, data interface{}) {
 	}
 }
 
-func formatSetAndList(datas []string) []map[string]string {
-	tmp := make([]map[string]string, 0, 100)
+func formatSetAndList(datas []string) []map[string]interface{} {
+	tmp := make([]map[string]interface{}, 0, 100)
 	for i := 0; i < len(datas); i++ {
-		row := make(map[string]string)
+		row := make(map[string]interface{})
 		row["val"] = datas[i]
+		row["index"] = i
 		tmp = append(tmp, row)
 	}
 	return tmp

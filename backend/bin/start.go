@@ -51,6 +51,34 @@ func main() {
 		backend.GetKey(c, data)
 	})
 
+	server.On("SetTTL", func(c *gosocketio.Channel, data interface{}) {
+		backend.SetTTL(c, data)
+	})
+
+	server.On("Rename", func(c *gosocketio.Channel, data interface{}) {
+		backend.Rename(c, data)
+	})
+
+	server.On("DelKey", func(c *gosocketio.Channel, data interface{}) {
+		backend.DelKey(c, data)
+	})
+
+	server.On("AddRow", func(c *gosocketio.Channel, data interface{}) {
+		backend.AddRow(c, data)
+	})
+
+	server.On("DelRow", func(c *gosocketio.Channel, data interface{}) {
+		backend.DelRow(c, data)
+	})
+
+	server.On("ModifyKey", func(c *gosocketio.Channel, data interface{}) {
+		backend.ModifyKey(c, data)
+	})
+
+	server.On("ScanRemote", func(c *gosocketio.Channel, data interface{}) {
+		backend.ScanRemote(c, data)
+	})
+
 	http.HandleFunc("/socket.io/", func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		w.Header().Set("Access-Control-Allow-Origin", origin)

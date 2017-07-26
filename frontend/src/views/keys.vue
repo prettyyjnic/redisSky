@@ -83,7 +83,7 @@
                 info.db = this.serverdb;
                 info.data = this.inputKey;
                 this.$socket.emit("ScanKeys", info)
-            }, 500),
+            }, 200),
             reload:  function(newRouter, oldRouter){
                 if (this.serverid != this.$route.params.serverid) {
                     this.inputKey = "";
@@ -99,6 +99,9 @@
             events:{
                 LoadKeys(keys){
                     this.keys = keys
+                },
+                ReloadKeys(){
+                    this.getKeys();
                 }
             }
         }

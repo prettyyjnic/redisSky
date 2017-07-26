@@ -36,9 +36,15 @@ type operData struct {
 }
 
 type dataStruct struct {
-	Index  int        `json:"index"` // list 用
-	OldVal redisValue `json:"oldVal"`
-	NewVal redisValue `json:"newVal"`
+	Index  int       `json:"index"` // list 用
+	OldVal redisData `json:"oldVal"`
+	NewVal redisData `json:"newVal"`
+}
+
+type redisData struct {
+	Val   string `json:"val"`
+	Field string `json:"field"`
+	Score int    `json:"score"`
 }
 
 // type redisValue
