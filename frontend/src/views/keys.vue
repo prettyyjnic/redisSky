@@ -16,7 +16,7 @@
             <Card>
                 <div class="offset-top-10">
                     <Select v-model="serverdb" class="width100">
-                        <Option v-for="item in server.dbNums" :value="item - 1" :key="item-1">
+                        <Option v-for="item in server.dbNums" :value="(item - 1)" :key="(item-1)">
                         db{{ item -1}}
                         </Option>
                     </Select>
@@ -45,17 +45,17 @@
         data(){
             return {
                 inputKey: "",
-                serverid: 0,
                 serverdb: 0,
                 keys: this.getKeys(),
             }
         },
-        created(){
-            this.serverid = parseInt(this.$route.params.serverid);
-        },
+        
         computed: {
             keysCardHeight(){
                 return window.innerHeight - 260 +"px";
+            },
+            serverid : function(){
+                return parseInt(this.$route.params.serverid);
             },
             server(){
                 for (var i = this.$store.state.servers.length - 1; i >= 0; i--) {
@@ -67,7 +67,7 @@
             }
         },
         watch: {
-            // '$route': 'reload',
+            '$route': 'reload',
             // 如果 question 发生改变，这个函数就会运行
             inputKey () {
                 this.getKeys();
@@ -80,19 +80,19 @@
             getKeys: _.debounce(function(){
                 var info = {}
                 info.serverid = this.server.id;
-                info.db = this.serverdb;
+                info.db = parseInt( this.serverdb );
                 info.data = this.inputKey;
                 this.$socket.emit("ScanKeys", info)
             }, 200),
             reload:  function(newRouter, oldRouter){
-                if (this.serverid != this.$route.params.serverid) {
+                if (this.serverid != this.$route.params.serverid || this.serverdb != this.$route.params.db) {
                     this.inputKey = "";
-                    this.serverid = this.$route.params.serverid;
+                    this.serverid = parseInt( this.$route.params.serverid );
+                    this.getKeys();
                 }
-                this.getKeys();
             },
             getLink(item){
-                return '/serverid/'+ this.serverid + '/db/' + this.serverdb +'/key/'+ item;
+                return '/serverid/'+ this.serverid + '/db/' + (this.serverdb ? parseInt(this.serverdb) : 0) +'/key/'+ item;
             }
         },
         socket:{

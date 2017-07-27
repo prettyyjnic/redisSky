@@ -121,7 +121,7 @@
 
         <Col span="24">
             <Row class="offset-top-10">
-                <Button @click="modifyValue" type="info" :style="{float:'right'}">Save</Button>
+                <Button @click="modifyKey" type="info" :style="{float:'right'}">Save</Button>
             </Row>
         </Col>
     </Row>
@@ -347,7 +347,7 @@
                 }
                 this.$socket.emit("DelRow", info);
             },
-            modifyValue(){
+            modifyKey(){
                 var info = this.getReqData();
                 var newVal = this.format(this.editVal, true);
                 if (info.data.t == 'string'){

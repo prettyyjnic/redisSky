@@ -48,6 +48,18 @@
     .ivu-col{
         transition: width .2s ease-in-out;
     }
+    .console{
+        border: 1px solid #57a3f3;
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        min-width: 200px;
+        max-width: 600px;
+    }
+    .overflow-y-show{
+        overflow-y: auto;
+        max-height: 400px;
+    }
 </style>
 <template>
     <div class="layout" :class="{'layout-hide-text': spanLeft < 3}" :style="{ 'height': windowHeight}">
@@ -79,7 +91,6 @@
                             </Tooltip>
                         </Menu-item>
                     </Menu-group>
-
                 </Menu>
             </i-col>
             <i-col :span="spanRight">
@@ -99,7 +110,21 @@
                 </div>
             </i-col>
         </Row>
+
+        <div class="console">
+            <Collapse>
+                <Panel>
+                    console
+                    <div class="overflow-y-show" slot="content">
+                        <span :style="{'display': console.length < 10 ? 'none' : 'inline-block'}" style="float:right; margin-right:10px" @click="clearConsole"><Button type="ghost">Clear</Button></span>
+                        <p v-for="item in console">{{item}}</p>
+                    </div>
+                </Panel>
+            </Collapse>
+        </div>
     </div>
+
+    
 </template>
 <script>
     export default {
@@ -107,6 +132,7 @@
             return {
                 spanLeft: 3,
                 spanRight: 21,
+                console:[]
                 // servers: {}
             }
         },
@@ -135,11 +161,26 @@
                     this.spanLeft = 3;
                     this.spanRight = 21;
                 }
+            },
+            clearConsole(){
+                this.console = [];
             }
         },
         socket:{
             events:{
-                
+                cmdLog(data){
+                    this.console.unshift('Log:' + data);
+                    this.console.slice(0, 1000);
+                },
+                cmdErr(data){
+                    this.console.unshift('Err:' +data);
+                    this.console.slice(0, 1000);
+                    this.$Message.error(data, 2000);
+                },
+                cmdReceive(data){
+                    this.console.unshift(data);
+                    this.console.slice(0, 1000);
+                },
             }
         }
     }
