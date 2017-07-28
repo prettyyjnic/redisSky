@@ -214,6 +214,9 @@
             searchField: function(){
                 this.scanRemote();
             },
+            scanNums: function(){
+                this.scanRemote();
+            },
             selectedRow: function(){
                 if (this.selectedRow === false) {
                     this.score = 0;
@@ -255,6 +258,7 @@
                 info.serverid = parseInt( this.server.id );
                 info.data = this.dataValue;
                 info.data.ttl = parseInt(info.data.ttl);
+                info.data.size = this.scanNums
                 return info;
             },
             setTTL: function(){

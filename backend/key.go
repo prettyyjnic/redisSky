@@ -11,10 +11,11 @@ import (
 	gosocketio "github.com/graarh/golang-socketio"
 )
 
-func scan(conn *gosocketio.Channel, c redis.Conn, key, field string, t scanType, iterate int64) (int64, []string) {
+func scan(conn *gosocketio.Channel, c redis.Conn, key, field string, t scanType, iterate, maxScanLimits int) (int, []string) {
 
 	var method, cmd string
 	var ret []interface{}
+	var keys, tmp []string
 	var err error
 	switch t {
 	case keyScan:
@@ -30,40 +31,47 @@ func scan(conn *gosocketio.Channel, c redis.Conn, key, field string, t scanType,
 		return 0, nil
 	}
 
-	if t == keyScan {
-		if !strings.ContainsAny(key, "*") {
-			key = key + "*"
-		}
-		cmd = fmt.Sprintf("%s %d MATCH %s COUNT %d", method, iterate, key, _globalConfigs.System.KeyScanLimits)
-		ret, err = redis.Values(c.Do(method, iterate, "MATCH", key, "COUNT", _globalConfigs.System.KeyScanLimits))
+	for {
 
-	} else {
-		if key == "" {
-			sendCmdError(conn, "key can't not be empty")
+		if t == keyScan {
+			if !strings.ContainsAny(key, "*") {
+				key = key + "*"
+			}
+			cmd = fmt.Sprintf("%s %d MATCH %s COUNT %d", method, iterate, key, _globalConfigs.System.KeyScanLimits)
+			ret, err = redis.Values(c.Do(method, iterate, "MATCH", key, "COUNT", _globalConfigs.System.KeyScanLimits))
+
+		} else {
+			if key == "" {
+				sendCmdError(conn, "key can't not be empty")
+				return 0, nil
+			}
+			if !strings.ContainsAny(key, "*") {
+				field = field + "*"
+			}
+			cmd = fmt.Sprintf("%s %s %d MATCH %s COUNT %d", method, key, iterate, field, _globalConfigs.System.KeyScanLimits)
+			ret, err = redis.Values(c.Do(method, key, iterate, "MATCH", field, "COUNT", _globalConfigs.System.KeyScanLimits))
+		}
+
+		sendCmd(conn, cmd)
+		if err != nil {
+			sendCmdError(conn, "redis error: "+err.Error())
 			return 0, nil
 		}
-		if !strings.ContainsAny(key, "*") {
-			field = field + "*"
+		sendCmdReceive(conn, ret)
+		tmp, err = redis.Strings(ret[1], nil)
+		if err != nil {
+			sendCmdError(conn, "redis error: "+err.Error())
+			return 0, nil
 		}
-		cmd = fmt.Sprintf("%s %s %d MATCH %s COUNT %d", method, key, iterate, field, _globalConfigs.System.KeyScanLimits)
-		ret, err = redis.Values(c.Do(method, key, iterate, "MATCH", field, "COUNT", _globalConfigs.System.KeyScanLimits))
-	}
-
-	sendCmd(conn, cmd)
-	if err != nil {
-		sendCmdError(conn, "redis error: "+err.Error())
-		return 0, nil
-	}
-	sendCmdReceive(conn, ret)
-	keys, err := redis.Strings(ret[1], nil)
-	if err != nil {
-		sendCmdError(conn, "redis error: "+err.Error())
-		return 0, nil
-	}
-	iterate, err = redis.Int64(ret[0], nil)
-	if err != nil {
-		sendCmdError(conn, "redis error: "+err.Error())
-		return 0, nil
+		keys = append(keys, tmp...)
+		iterate, err = redis.Int(ret[0], nil)
+		if err != nil {
+			sendCmdError(conn, "redis error: "+err.Error())
+			return 0, nil
+		}
+		if iterate == 0 || len(keys) >= maxScanLimits {
+			break
+		}
 	}
 
 	return iterate, keys
@@ -84,16 +92,7 @@ func ScanKeys(conn *gosocketio.Channel, data interface{}) {
 			return
 		}
 		defer c.Close()
-		var iterator int64
-		var keys, tmp []string
-		keys = make([]string, 0, 1000)
-		for { // scan key while len < limits
-			iterator, tmp = scan(conn, c, key, "", keyScan, iterator)
-			keys = append(keys, tmp...)
-			if iterator == 0 || len(keys) >= _globalConfigs.System.KeyScanLimits {
-				break
-			}
-		}
+		_, keys := scan(conn, c, key, "", keyScan, 0, _globalConfigs.System.KeyScanLimits)
 		conn.Emit("LoadKeys", keys)
 	}
 }
@@ -108,6 +107,11 @@ func ScanRemote(conn *gosocketio.Channel, data interface{}) {
 			sendCmdError(conn, "val should be string")
 			return
 		}
+		var size int
+		size = _redisValue.Size
+		if size == 0 {
+			size = _globalConfigs.System.RowScanLimits
+		}
 		if t, err := keyType(conn, c, key); err == nil {
 			if t == "none" {
 				sendCmdError(conn, "key is not exists")
@@ -118,13 +122,13 @@ func ScanRemote(conn *gosocketio.Channel, data interface{}) {
 				sendCmdError(conn, t+" not support this method!")
 				return
 			case "set":
-				_, vals := scan(conn, c, key, field, setScan, 0)
+				_, vals := scan(conn, c, key, field, setScan, 0, size)
 				conn.Emit("ReloadDatas", formatSetAndList(vals))
 			case "zset":
-				_, vals := scan(conn, c, key, field, zsetScan, 0)
+				_, vals := scan(conn, c, key, field, zsetScan, 0, size)
 				conn.Emit("ReloadDatas", formatZset(vals))
 			case "hash":
-				_, vals := scan(conn, c, key, field, hashScan, 0)
+				_, vals := scan(conn, c, key, field, hashScan, 0, size)
 				conn.Emit("ReloadDatas", formatHash(vals))
 			default:
 				sendCmdError(conn, "underfined type:"+t)
@@ -144,6 +148,11 @@ func GetKey(conn *gosocketio.Channel, data interface{}) {
 		var field = ""
 		if ok {
 			field = extra["field"]
+		}
+		var size int
+		size = _redisValue.Size
+		if size == 0 {
+			size = _globalConfigs.System.RowScanLimits
 		}
 		if t, err := keyType(conn, c, key); err == nil {
 			if t == "none" {
@@ -184,7 +193,7 @@ func GetKey(conn *gosocketio.Channel, data interface{}) {
 				}
 				cmd = "LLEN " + key
 				sendCmd(conn, cmd)
-				l, err := redis.Int64(c.Do("LLEN", key))
+				l, err := redis.Int(c.Do("LLEN", key))
 				if err != nil {
 					sendCmdError(conn, err.Error())
 					return
@@ -193,11 +202,11 @@ func GetKey(conn *gosocketio.Channel, data interface{}) {
 				_redisValue.Size = l
 				_redisValue.Val = formatSetAndList(list)
 			case "set":
-				_, vals := scan(conn, c, key, field, setScan, 0)
+				_, vals := scan(conn, c, key, field, setScan, 0, size)
 
 				cmd = "SCARD " + key
 				sendCmd(conn, cmd)
-				l, err := redis.Int64(c.Do("SCARD", key))
+				l, err := redis.Int(c.Do("SCARD", key))
 				if err != nil {
 					sendCmdError(conn, err.Error())
 					return
@@ -215,19 +224,19 @@ func GetKey(conn *gosocketio.Channel, data interface{}) {
 					lenMethod = "HLEN"
 					method = hashScan
 				}
-				_, vals := scan(conn, c, key, field, method, 0)
+				_, vals := scan(conn, c, key, field, method, 0, size)
 				cmd = lenMethod + " " + key
-				var l int64
+				var l int
 				var err error
 				if t == "zset" {
 					_redisValue.Val = formatZset(vals)
 					cmd += " -inf +inf"
 					sendCmd(conn, cmd)
-					l, err = redis.Int64(c.Do(lenMethod, key, "-inf", "+inf"))
+					l, err = redis.Int(c.Do(lenMethod, key, "-inf", "+inf"))
 				} else {
 					_redisValue.Val = formatHash(vals)
 					sendCmd(conn, cmd)
-					l, err = redis.Int64(c.Do(lenMethod, key))
+					l, err = redis.Int(c.Do(lenMethod, key))
 				}
 
 				if err != nil {

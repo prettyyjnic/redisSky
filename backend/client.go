@@ -52,7 +52,7 @@ type redisValue struct {
 	Key  string      `json:"key"`
 	T    string      `json:"t"`
 	TTL  int64       `json:"ttl"`
-	Size int64       `json:"size"`
+	Size int         `json:"size"`
 	Val  interface{} `json:"val"`
 }
 

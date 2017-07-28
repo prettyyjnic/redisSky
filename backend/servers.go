@@ -44,6 +44,7 @@ func AddServer(conn *gosocketio.Channel, data interface{}) {
 	_maxServerID++
 	server.ID = _maxServerID
 	_globalConfigs.Servers = append(_globalConfigs.Servers, server)
+	saveConf()
 	conn.Emit("AddServerSuccess", server)
 }
 

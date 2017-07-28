@@ -59,10 +59,10 @@ func DelKey(conn *gosocketio.Channel, data interface{}) {
 						_scanType = zsetScan
 						delMethod = "ZREM"
 					}
-					var iterater int64
+					var iterater int
 
 					for {
-						iterater, fields := scan(conn, c, key, "", _scanType, iterater)
+						iterater, fields := scan(conn, c, key, "", _scanType, iterater, _globalConfigs.System.RowScanLimits)
 						slice := make([]interface{}, 0, _globalConfigs.System.RowScanLimits)
 						slice = append(slice, key)
 						for i := 0; i < len(fields); i = i + 2 {
