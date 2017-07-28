@@ -33,7 +33,7 @@
         <Col span="24" :class="{'hidden': dataValue.t == 'string'}">
             <Row class="offset-top-10">
                 <Col span="17">
-                    <Table border height="200" size="small" :columns="columns" :data="data" :highlight-row="true" @on-row-click="viewData" @on-current-change="selectRow"></Table>
+                    <Table border height="200" size="small" :columns="columns" :data="data" :highlight-row="true" @on-row-click="viewData" @on-current-change="selectRow"></Table>  
                 </Col>
                 <Col span="7">
                     <Button class="offset-top-10 offset-left-10" type="ghost" long @click="addRowModal = true"><Icon type="plus-round" :color="'green'"></Icon>Add Row</Button>
@@ -128,6 +128,7 @@
 </template>
 
 <script>
+import Vue from 'vue';
     export default {
         data(){
             return {
@@ -306,7 +307,10 @@
                         info.data.val = {}
                         info.data.val[this.newItem.field] = this.newItem.value;
                     }else{
-                        this.$Message.error("unSupport type : "+ this.data.t, 2000);
+                        this.$Notice.error({
+                            title: 'Error',
+                            desc: "unSupport type : "+ this.data.t
+                        });
                         return;
                     }
                     this.$socket.emit("AddRow", info)
@@ -473,6 +477,7 @@
                 },
                 ReloadDatas(vals){
                     this.data = vals;
+                    
                 },
                 ShowRedisValue(redisValue){
                     this.newItem = {
@@ -517,6 +522,7 @@
                         default:
                             this.data = redisValue.val;
                     }
+                    
                 },
                 DelRow(){
                     this.routeReload();

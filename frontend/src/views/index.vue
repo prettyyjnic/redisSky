@@ -173,9 +173,10 @@
                     this.console.slice(0, 1000);
                 },
                 cmdErr(data){
-                    this.console.unshift('Err:' +data);
-                    this.console.slice(0, 1000);
-                    this.$Message.error(data, 2000);
+                    this.$Notice.error({
+                        title: 'Error',
+                        desc: data
+                    });
                 },
                 cmdReceive(data){
                     this.console.unshift(data);

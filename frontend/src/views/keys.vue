@@ -250,7 +250,10 @@
                 }else if(this.newItem.t == 'hash'){
                     info.data.val = this.newItem.hashVal;
                 }else{
-                    this.$Message.error("unknown type", 2000);
+                    this.$Notice.error({
+                        title: 'Error',
+                        desc: "unknown type : " + this.newItem.t
+                    });
                     return;
                 }
                 info.data.t = this.newItem.t;
