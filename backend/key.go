@@ -36,6 +36,7 @@ func scan(conn *gosocketio.Channel, c redis.Conn, key, field string, t scanType,
 		}
 		cmd = fmt.Sprintf("%s %d MATCH %s COUNT %d", method, iterate, key, _globalConfigs.System.KeyScanLimits)
 		ret, err = redis.Values(c.Do(method, iterate, "MATCH", key, "COUNT", _globalConfigs.System.KeyScanLimits))
+
 	} else {
 		if key == "" {
 			sendCmdError(conn, "key can't not be empty")
@@ -64,6 +65,7 @@ func scan(conn *gosocketio.Channel, c redis.Conn, key, field string, t scanType,
 		sendCmdError(conn, "redis error: "+err.Error())
 		return 0, nil
 	}
+
 	return iterate, keys
 }
 
@@ -82,7 +84,16 @@ func ScanKeys(conn *gosocketio.Channel, data interface{}) {
 			return
 		}
 		defer c.Close()
-		_, keys := scan(conn, c, key, "", keyScan, 0)
+		var iterator int64
+		var keys, tmp []string
+		keys = make([]string, 0, 1000)
+		for { // scan key while len < limits
+			iterator, tmp = scan(conn, c, key, "", keyScan, iterator)
+			keys = append(keys, tmp...)
+			if iterator == 0 || len(keys) >= _globalConfigs.System.KeyScanLimits {
+				break
+			}
+		}
 		conn.Emit("LoadKeys", keys)
 	}
 }
