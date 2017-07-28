@@ -29,9 +29,10 @@ func AddKey(conn *gosocketio.Channel, data interface{}) {
 			}
 			sendCmdReceive(conn, r)
 		case "list", "set":
-			val, ok := (_redisValue.Val).([]string)
+			val, ok := (_redisValue.Val).([]interface{})
+			fmt.Printf("%v", _redisValue.Val)
 			if !ok {
-				sendCmdError(conn, "val should be array of string")
+				sendCmdError(conn, "val should be array of string now is "+reflect.ValueOf(_redisValue.Val).Kind().String())
 				return
 			}
 			var method string
@@ -41,8 +42,12 @@ func AddKey(conn *gosocketio.Channel, data interface{}) {
 				method = "SADD"
 			}
 			slice := make([]interface{}, 0, 10)
-			slice = append(slice, _redisValue.Key, val)
-			cmd := fmt.Sprintf("%s %v", method, slice)
+			slice = append(slice, _redisValue.Key)
+			slice = append(slice, val...)
+			cmd := method
+			for i := 0; i < len(slice); i++ {
+				cmd += fmt.Sprintf("%s", slice[i])
+			}
 			sendCmd(conn, cmd)
 			r, err := c.Do(method, slice...)
 			if err != nil {

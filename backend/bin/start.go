@@ -75,6 +75,10 @@ func main() {
 		backend.ModifyKey(c, data)
 	})
 
+	server.On("AddKey", func(c *gosocketio.Channel, data interface{}) {
+		backend.AddKey(c, data)
+	})
+
 	server.On("ScanRemote", func(c *gosocketio.Channel, data interface{}) {
 		backend.ScanRemote(c, data)
 	})
