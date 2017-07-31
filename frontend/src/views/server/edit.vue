@@ -1,4 +1,4 @@
-/*<style scoped>
+<style scoped>
 .width100{
     width: 100% !important;
 }
@@ -126,4 +126,4 @@
         }
 
     }
-</script>*/
+</script>

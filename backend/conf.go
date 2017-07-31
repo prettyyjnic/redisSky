@@ -8,9 +8,6 @@ import (
 	gosocketio "github.com/graarh/golang-socketio"
 )
 
-// _configFilePath 配置文件路径
-var _configFilePath string
-
 type systemConf struct {
 	ConnectionTimeout int `json:"connectionTimeout"`
 	ExecutionTimeout  int `json:"executionTimeout"`
@@ -37,17 +34,18 @@ func (message Message) marshal() ([]byte, error) {
 	return json.Marshal(message)
 }
 
-var confFilePath = "./conf.json"
-var defaultConfig = []byte(`{"servers":[{"id":1,"name":"localhost","host":"127.0.0.1","port":6379,"auth":"","dbNums":15}],"system":{"connectionTimeout":10,"executionTimeout":10,"keyScanLimits":1000,"rowScanLimits":1000,"delRowLimits":1000}}`)
+// _configFilePath 配置文件路径
+var _configFilePath = "./conf.json"
+var _defaultConfig = []byte(`{"servers":[{"id":1,"name":"localhost","host":"127.0.0.1","port":6379,"auth":"","dbNums":15}],"system":{"connectionTimeout":10,"executionTimeout":10,"keyScanLimits":1000,"rowScanLimits":1000,"delRowLimits":1000}}`)
 
 func init() {
-	_, err := os.Stat(confFilePath)
+	_, err := os.Stat(_configFilePath)
 	if os.IsNotExist(err) {
-		err = ioutil.WriteFile(confFilePath, defaultConfig, 0755)
+		err = ioutil.WriteFile(_configFilePath, _defaultConfig, 0755)
 		checkErr(err)
 	}
 
-	conf, err := ioutil.ReadFile(confFilePath)
+	conf, err := ioutil.ReadFile(_configFilePath)
 	checkErr(err)
 	err = json.Unmarshal(conf, &_globalConfigs)
 	checkErr(err)

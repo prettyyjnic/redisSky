@@ -31,6 +31,20 @@
                             return h('div', [
                                 h('Button', {
                                     props: {
+                                        type: 'info',
+                                        size: 'small'
+                                    } 
+                                    ,style: {
+                                        marginRight: '5px'
+                                    }
+                                    ,on: {
+                                        click: () => {
+                                            this.$router.push({ path: '/servers/info/'+ this.servers[params.index]['id'] })
+                                        }
+                                    }
+                                }, 'info'),
+                                h('Button', {
+                                    props: {
                                         type: 'primary',
                                         size: 'small'
                                     } 

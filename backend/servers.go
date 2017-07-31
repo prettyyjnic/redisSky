@@ -1,7 +1,11 @@
 package backend
 
-import gosocketio "github.com/graarh/golang-socketio"
-import "encoding/json"
+import (
+	"bytes"
+	"encoding/json"
+
+	gosocketio "github.com/graarh/golang-socketio"
+)
 
 // redisServer 配置
 type redisServer struct {
@@ -78,4 +82,33 @@ func DelServer(conn *gosocketio.Channel, serverid int) {
 	}
 	saveConf()
 	conn.Emit("DelServerSuccess", _globalConfigs.Servers)
+}
+
+// ServerInfo query server info
+func ServerInfo(conn *gosocketio.Channel, serverID int) {
+	c, err := getRedisClient(serverID, 0)
+	if err != nil {
+		sendCmdError(conn, err.Error())
+		return
+	}
+	sendCmd(conn, "INFO")
+	infos, err := c.Do("INFO")
+	if err != nil {
+		sendCmdError(conn, err.Error())
+		return
+	}
+
+	retBytes := bytes.Split(infos.([]byte), []byte("\r\n"))
+	ret := make(map[string][]string)
+	var currentSection string
+	for i := 0; i < len(retBytes); i++ {
+		if bytes.HasPrefix(retBytes[i], []byte("#")) {
+			currentSection = string(retBytes[i])
+		} else {
+			ret[currentSection] = append(ret[currentSection], string(retBytes[i]))
+		}
+	}
+
+	sendCmdReceive(conn, ret)
+	conn.Emit("ShowServerInfo", ret)
 }

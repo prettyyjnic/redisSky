@@ -4,7 +4,7 @@
         background: #f5f7f9;
         position: relative;
         border-radius: 4px;
-        overflow: hidden;        
+        overflow-y: scroll;
     }
     .layout-breadcrumb{
         padding: 10px 15px 0;
@@ -105,9 +105,6 @@
                         <router-view></router-view>
                     </div>
                 </div>
-                <div class="layout-copy">
-                    2017-2017 &copy; sky
-                </div>
             </i-col>
         </Row>
 
@@ -153,6 +150,9 @@
             }
         },
         methods: {
+            test(){
+                alert(1);
+            },
             toggleClick () {
                 if (this.spanLeft === 3) {
                     this.spanLeft = 1;

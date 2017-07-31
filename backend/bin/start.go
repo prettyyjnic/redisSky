@@ -83,6 +83,10 @@ func main() {
 		backend.ScanRemote(c, data)
 	})
 
+	server.On("ServerInfo", func(c *gosocketio.Channel, serverID int) {
+		backend.ServerInfo(c, serverID)
+	})
+
 	http.HandleFunc("/socket.io/", func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		w.Header().Set("Access-Control-Allow-Origin", origin)
