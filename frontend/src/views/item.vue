@@ -506,6 +506,11 @@ import Vue from 'vue';
                             key: 'field',
                             ellipsis: true,
                         });
+                        if (redisValue.val != null){
+                            redisValue.val.sort(function(a, b){
+                                return b.field < a.field;
+                            });
+                        }
                     }
                     if (redisValue.t == 'zset') {
                         this.columns.splice(1, 0, {
@@ -514,6 +519,11 @@ import Vue from 'vue';
                             sortable: true,
                             width: '20%',                      
                         });
+                        if (redisValue.val != null){
+                            redisValue.val.sort(function(a, b){
+                                return b.score - a.score;
+                            });
+                        }
                     }
                     switch (redisValue.t){
                         case "string":

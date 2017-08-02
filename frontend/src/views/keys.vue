@@ -263,7 +263,8 @@
         socket:{
             events:{
                 LoadKeys(keys){
-                    this.keys = keys
+                    keys.sort();
+                    this.keys = keys;
                 },
                 ReloadKeys(){
                     this.getKeys();
