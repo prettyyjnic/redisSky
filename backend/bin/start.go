@@ -16,74 +16,110 @@ func main() {
 	})
 
 	server.On("QuerySystemConfigs", func(c *gosocketio.Channel) {
+		c.Emit("loading", 0)
+		defer c.Emit("loadingComplete", 0)
 		backend.QuerySystemConfigs(c)
 	})
 
 	server.On("UpdateSystemConfigs", func(c *gosocketio.Channel, data interface{}) {
+		c.Emit("loading", 0)
+		defer c.Emit("loadingComplete", 0)
 		backend.UpdateSystemConfigs(c, data)
 	})
 
 	server.On("QueryServer", func(c *gosocketio.Channel, serverID int) {
+		c.Emit("loading", 0)
+		defer c.Emit("loadingComplete", 0)
 		backend.QueryServer(c, serverID)
 	})
 
 	server.On("QueryServers", func(c *gosocketio.Channel) {
+		c.Emit("loading", 0)
+		defer c.Emit("loadingComplete", 0)
 		backend.QueryServers(c)
 	})
 
 	server.On("DelServer", func(c *gosocketio.Channel, serverID int) {
+		c.Emit("loading", 0)
+		defer c.Emit("loadingComplete", 0)
 		backend.DelServer(c, serverID)
 	})
 
 	server.On("UpdateServer", func(c *gosocketio.Channel, data interface{}) {
+		c.Emit("loading", 0)
+		defer c.Emit("loadingComplete", 0)
 		backend.UpdateServer(c, data)
 	})
 
 	server.On("AddServer", func(c *gosocketio.Channel, data interface{}) {
+		c.Emit("loading", 0)
+		defer c.Emit("loadingComplete", 0)
 		backend.AddServer(c, data)
 	})
 
 	server.On("ScanKeys", func(c *gosocketio.Channel, data interface{}) {
+		c.Emit("loading", 0)
+		defer c.Emit("loadingComplete", 0)
 		backend.ScanKeys(c, data)
 	})
 
 	server.On("GetKey", func(c *gosocketio.Channel, data interface{}) {
+		c.Emit("loading", 0)
+		defer c.Emit("loadingComplete", 0)
 		backend.GetKey(c, data)
 	})
 
 	server.On("SetTTL", func(c *gosocketio.Channel, data interface{}) {
+		c.Emit("loading", 0)
+		defer c.Emit("loadingComplete", 0)
 		backend.SetTTL(c, data)
 	})
 
 	server.On("Rename", func(c *gosocketio.Channel, data interface{}) {
+		c.Emit("loading", 0)
+		defer c.Emit("loadingComplete", 0)
 		backend.Rename(c, data)
 	})
 
 	server.On("DelKey", func(c *gosocketio.Channel, data interface{}) {
+		c.Emit("loading", 0)
+		defer c.Emit("loadingComplete", 0)
 		backend.DelKey(c, data)
 	})
 
 	server.On("AddRow", func(c *gosocketio.Channel, data interface{}) {
+		c.Emit("loading", 0)
+		defer c.Emit("loadingComplete", 0)
 		backend.AddRow(c, data)
 	})
 
 	server.On("DelRow", func(c *gosocketio.Channel, data interface{}) {
+		c.Emit("loading", 0)
+		defer c.Emit("loadingComplete", 0)
 		backend.DelRow(c, data)
 	})
 
 	server.On("ModifyKey", func(c *gosocketio.Channel, data interface{}) {
+		c.Emit("loading", 0)
+		defer c.Emit("loadingComplete", 0)
 		backend.ModifyKey(c, data)
 	})
 
 	server.On("AddKey", func(c *gosocketio.Channel, data interface{}) {
+		c.Emit("loading", 0)
+		defer c.Emit("loadingComplete", 0)
 		backend.AddKey(c, data)
 	})
 
 	server.On("ScanRemote", func(c *gosocketio.Channel, data interface{}) {
+		c.Emit("loading", 0)
+		defer c.Emit("loadingComplete", 0)
 		backend.ScanRemote(c, data)
 	})
 
 	server.On("ServerInfo", func(c *gosocketio.Channel, serverID int) {
+		c.Emit("loading", 0)
+		defer c.Emit("loadingComplete", 0)
 		backend.ServerInfo(c, serverID)
 	})
 
@@ -93,6 +129,12 @@ func main() {
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		server.ServeHTTP(w, r)
 	})
-	log.Println("Serving at localhost:8090...")
-	log.Fatal(http.ListenAndServe(":8090", nil))
+
+	// server http 请求
+	dir := "/mnt/hgfs/code/golang/src/github.com/prettyyjnic/redisSky/frontend"
+	http.Handle("/", http.FileServer(http.Dir(dir)))
+
+	log.Println("Serving at localhost:80...")
+	log.Fatal(http.ListenAndServe(":80", nil))
+
 }

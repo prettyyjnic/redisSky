@@ -101,6 +101,7 @@ func ScanKeys(conn *gosocketio.Channel, data interface{}) {
 func ScanRemote(conn *gosocketio.Channel, data interface{}) {
 	if c, _redisValue, ok := checkRedisValue(conn, data); ok {
 		defer c.Close()
+
 		var key = _redisValue.Key
 		field, ok := (_redisValue.Val).(string)
 		if !ok {
@@ -299,6 +300,7 @@ func SetTTL(conn *gosocketio.Channel, data interface{}) {
 		sendCmdReceive(conn, expire)
 
 		conn.Emit("ReloadTTL", _redisValue.TTL)
+		conn.Emit("tip", &info{"success", "set ttl success!", 2})
 	}
 }
 
@@ -330,6 +332,7 @@ func Rename(conn *gosocketio.Channel, data interface{}) {
 			return
 		}
 		conn.Emit("ReloadName", newKey)
+		conn.Emit("tip", &info{"success", "rename success!", 2})
 	}
 }
 

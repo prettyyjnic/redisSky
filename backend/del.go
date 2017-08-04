@@ -87,6 +87,7 @@ func DelKey(conn *gosocketio.Channel, data interface{}) {
 			}
 
 			conn.Emit("DelSuccess", 0)
+			conn.Emit("tip", &info{"success", "del success!", 2})
 			// conn.Emit("ReloadKeys", nil)
 		}
 	}

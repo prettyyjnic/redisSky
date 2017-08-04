@@ -92,11 +92,10 @@
             handleSubmit (name) {
                 this.$refs[name].validate((valid) => {
                     if (valid) {
-                        this.$Message.loading("loading...", 0);
                         if (this.server.id > 0){
                             this.$socket.emit("UpdateServer", this.server)
                         }else{
-                            this.$socket.emit("AddServer", this.server)                            
+                            this.$socket.emit("AddServer", this.server)
                         }
                     } else {
                         this.$Message.error('validate error!');

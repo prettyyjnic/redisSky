@@ -41,7 +41,6 @@
                         v-model="addRowModal"
                         title="add row"
                         width="800"
-                        :loading="true"
                         @on-ok="addRow">
                         <Form :model="newItem" :label-width="80">
                             <Form-item label="score" :class="{'hidden': dataValue.t != 'zset'}">
@@ -115,7 +114,7 @@
                 </Col>
             </Row>
             <Row class="offset-top-10">
-                <Input :disabled="dataValue.t != 'string' && !selectedRow" v-model="editVal" type="textarea" :autosize="{minRows: dataValue.t == 'string' ? 20 : 10,maxRows: 50}"></Input>
+                <Input :disabled="dataValue.t != 'string' && !selectedRow" v-model="editVal" type="textarea" :autosize="{minRows: dataValue.t == 'string' ? 20 : 10, maxRows: 50}"></Input>
             </Row>
         </Col>
 
@@ -154,8 +153,6 @@ import Vue from 'vue';
                 score: 1,
                 selectedRow: false,
                 scanNums: 1000,
-                removeBtnLoading: false,
-                addRowLoading: true,
                 columns: [
                     {
                         title: 'row',
@@ -480,12 +477,6 @@ import Vue from 'vue';
                 },
                 DelSuccess(){
                     this.dataValue.t = 'none';
-                    this.$Message.success({
-                        content: "del success",
-                        duration: 2,
-                        closable: true
-                    });
-
                     this.$emit("refresh");                    
                 },
                 ShowRedisValue(redisValue){
@@ -544,7 +535,7 @@ import Vue from 'vue';
                     
                 },
                 DelRow(){
-                    this.routeReload();
+                    this.scanRemote();
                 }
             }
         }
