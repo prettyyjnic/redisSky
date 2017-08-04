@@ -16,6 +16,12 @@ type systemConf struct {
 	DelRowLimits      int `json:"delRowLimits"`
 }
 
+type info struct {
+	Type     string `json:"type"`
+	Msg      string `json:"msg"`
+	Duration int    `json:"duration"`
+}
+
 type globalConfigs struct {
 	Servers []redisServer `json:"servers"`
 	System  systemConf    `json:"system"`

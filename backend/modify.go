@@ -91,7 +91,7 @@ func ModifyKey(conn *gosocketio.Channel, data interface{}) {
 					if oldVal.Val != newVal.Val {
 						zrem(conn, c, _redisValue.Key, oldVal.Val)
 					}
-					cmd = fmt.Sprintf("ZADD %s %d %s", _redisValue.Key, newVal.Score, newVal.Val)
+					cmd = fmt.Sprintf("ZADD %s %f %s", _redisValue.Key, newVal.Score, newVal.Val)
 					sendCmd(conn, cmd)
 					r, err := c.Do("ZADD", _redisValue.Key, newVal.Score, newVal.Val)
 					if err != nil {
@@ -100,7 +100,7 @@ func ModifyKey(conn *gosocketio.Channel, data interface{}) {
 					}
 					sendCmdReceive(conn, r)
 				case "hash":
-					if oldVal.Val != newVal.Val {
+					if oldVal.Field != newVal.Field {
 						hdel(conn, c, _redisValue.Key, oldVal.Field)
 					}
 					cmd = fmt.Sprintf("HSET %s %s %s", _redisValue.Key, newVal.Field, newVal.Val)
@@ -117,5 +117,6 @@ func ModifyKey(conn *gosocketio.Channel, data interface{}) {
 			}
 		}
 		conn.Emit("ReloadValue", _redisValue.Key)
+		conn.Emit("tip", &info{"success", "modify success!", 2})
 	}
 }

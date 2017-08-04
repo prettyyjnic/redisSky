@@ -13,7 +13,7 @@
 }
 </style>
 <template>
-    <Row :gutter="16">
+    <Row :gutter="16" :class="{'hidden': dataValue.t == 'none'}">
         <Col span="6">
             <span :style="{width: '20%'}">{{dataValue.t}}: </span><Input v-model="key" :style="{width: '80%'}"></Input>
         </Col>
@@ -476,8 +476,17 @@ import Vue from 'vue';
                     this.$route.params.key = this.key = newKey;
                 },
                 ReloadDatas(vals){
-                    this.data = vals;
-                    
+                    this.data = vals;                    
+                },
+                DelSuccess(){
+                    this.dataValue.t = 'none';
+                    this.$Message.success({
+                        content: "del success",
+                        duration: 2,
+                        closable: true
+                    });
+
+                    this.$emit("refresh");                    
                 },
                 ShowRedisValue(redisValue){
                     this.newItem = {

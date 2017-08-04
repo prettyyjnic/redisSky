@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -85,7 +86,8 @@ func DelKey(conn *gosocketio.Channel, data interface{}) {
 
 			}
 
-			conn.Emit("ReloadKeys", nil)
+			conn.Emit("DelSuccess", 0)
+			// conn.Emit("ReloadKeys", nil)
 		}
 	}
 }
@@ -127,14 +129,21 @@ func checkBigKey(conn *gosocketio.Channel, c redis.Conn, key string, t string) (
 }
 
 func checkLazyDel(conn *gosocketio.Channel, c redis.Conn) bool {
-	info, err := redis.Strings(c.Do("INFO", "SERVER"))
+	infos, err := c.Do("INFO", "SERVER")
 	if err != nil {
 		sendCmdError(conn, err.Error())
 		return false
 	}
-	sendCmdReceive(conn, info)
-	for i := 0; i < len(info); i++ {
-		infoArr := strings.Split(info[i], ":")
+	sendCmdReceive(conn, infos)
+
+	retBytes := bytes.Split(infos.([]byte), []byte("\r\n"))
+	if err != nil {
+		sendCmdError(conn, err.Error())
+		return false
+	}
+	for i := 0; i < len(retBytes); i++ {
+		info := string(retBytes[i])
+		infoArr := strings.Split(info, ":")
 		if len(infoArr) == 2 && infoArr[0] == "redis_version" {
 			verArr := strings.Split(infoArr[0], ".")
 			if len(verArr) == 3 {

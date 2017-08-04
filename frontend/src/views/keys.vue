@@ -107,7 +107,7 @@
                                     <Input type="text" v-model="newItem.zsetVal[index].val" placeholder="please input val..."></Input>
                                 </Col>
                                 <Col span="9" offset="1">
-                                    <Input type="text" v-model="newItem.zsetVal[index].score" placeholder="please input score..."></Input>
+                                    <Input-number v-model="newItem.zsetVal[index].score" placeholder="please input score..."></Input-number>
                                 </Col>
                                 <Col span="4" offset="1">
                                     <Button type="ghost" @click="handleRemoveZset(index)">del</Button>
@@ -146,7 +146,7 @@
         </Col>
         <Col span="19">
             <Card>
-                <router-view></router-view>
+                <router-view v-on:refresh="getKeys"></router-view>
             </Card>
         </Col>
     </Row>
@@ -245,7 +245,7 @@
                     info.data.val = this.newItem.stringVal;
                 }else if(this.newItem.t == 'set' || this.newItem.t == 'list'){
                     info.data.val = this.newItem.listVal;
-                }else if(this.newItem.t == 'zset'){
+                }else if(this.newItem.t == 'zset'){                    
                     info.data.val = this.newItem.zsetVal;
                 }else if(this.newItem.t == 'hash'){
                     info.data.val = this.newItem.hashVal;
@@ -263,6 +263,7 @@
         socket:{
             events:{
                 LoadKeys(keys){
+                    if (keys == null) {this.keys = [];return;}
                     keys.sort();
                     this.keys = keys;
                 },

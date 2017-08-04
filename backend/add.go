@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"reflect"
@@ -30,7 +31,6 @@ func AddKey(conn *gosocketio.Channel, data interface{}) {
 			sendCmdReceive(conn, r)
 		case "list", "set":
 			val, ok := (_redisValue.Val).([]interface{})
-			fmt.Printf("%v", _redisValue.Val)
 			if !ok {
 				sendCmdError(conn, "val should be array of string now is "+reflect.ValueOf(_redisValue.Val).Kind().String())
 				return
@@ -56,15 +56,20 @@ func AddKey(conn *gosocketio.Channel, data interface{}) {
 			}
 			sendCmdReceive(conn, r)
 		case "hash":
-			hset(conn, c, _redisValue)
+			if hsetMulti(conn, c, _redisValue) == false {
+				return
+			}
 		case "zset":
-			zadd(conn, c, _redisValue)
+			if zaddMulti(conn, c, _redisValue) == false {
+				return
+			}
 		default:
 			sendCmdError(conn, "type is not correct")
 			return
 		}
 
 		conn.Emit("ReloadKeys", _redisValue.Key)
+		conn.Emit("tip", &info{"success", "add success!", 2})
 	}
 }
 
@@ -95,6 +100,29 @@ func zadd(conn *gosocketio.Channel, c redis.Conn, _redisValue redisValue) bool {
 	return true
 }
 
+// zaddMulti
+func zaddMulti(conn *gosocketio.Channel, c redis.Conn, _redisValue redisValue) bool {
+	var datas []redisData
+	tmp, _ := json.Marshal(_redisValue.Val)
+	err := json.Unmarshal(tmp, &datas)
+	if err != nil {
+		sendCmdError(conn, "val should be array of redisData: "+err.Error())
+		return false
+	}
+	var cmd string
+	for i := 0; i < len(datas); i++ {
+		cmd = fmt.Sprintf("ZADD %s %f %s", _redisValue.Key, datas[i].Score, datas[i].Val)
+		sendCmd(conn, cmd)
+		r, err := c.Do("ZADD", _redisValue.Key, datas[i].Score, datas[i].Val)
+		if err != nil {
+			sendCmdError(conn, err.Error())
+			return false
+		}
+		sendCmdReceive(conn, r)
+	}
+	return true
+}
+
 // hset redis hset
 func hset(conn *gosocketio.Channel, c redis.Conn, _redisValue redisValue) bool {
 	vals, ok := (_redisValue.Val).(map[string]interface{})
@@ -113,6 +141,29 @@ func hset(conn *gosocketio.Channel, c redis.Conn, _redisValue redisValue) bool {
 		cmd = fmt.Sprintf("HSET %s %s %s", _redisValue.Key, k, v)
 		sendCmd(conn, cmd)
 		r, err := c.Do("HSET", _redisValue.Key, k, v)
+		if err != nil {
+			sendCmdError(conn, err.Error())
+			return false
+		}
+		sendCmdReceive(conn, r)
+	}
+	return true
+}
+
+// hsetMulti
+func hsetMulti(conn *gosocketio.Channel, c redis.Conn, _redisValue redisValue) bool {
+	var datas []redisData
+	tmp, _ := json.Marshal(_redisValue.Val)
+	err := json.Unmarshal(tmp, &datas)
+	if err != nil {
+		sendCmdError(conn, "val should be array of redisData: "+err.Error())
+		return false
+	}
+	var cmd string
+	for i := 0; i < len(datas); i++ {
+		cmd = fmt.Sprintf("HSET %s %s %s", _redisValue.Key, datas[i].Field, datas[i].Val)
+		sendCmd(conn, cmd)
+		r, err := c.Do("HSET", _redisValue.Key, datas[i].Field, datas[i].Val)
 		if err != nil {
 			sendCmdError(conn, err.Error())
 			return false
@@ -174,6 +225,7 @@ func AddRow(conn *gosocketio.Channel, data interface{}) {
 					}
 				}
 				conn.Emit("ReloadValue", 1)
+				conn.Emit("tip", &info{"success", "success!", 2})
 				return
 			}
 		}

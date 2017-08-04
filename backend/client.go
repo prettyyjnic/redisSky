@@ -42,9 +42,9 @@ type dataStruct struct {
 }
 
 type redisData struct {
-	Val   string `json:"val"`
-	Field string `json:"field"`
-	Score int    `json:"score"`
+	Val   string  `json:"val"`
+	Field string  `json:"field"`
+	Score float32 `json:"score"`
 }
 
 // type redisValue
@@ -95,7 +95,9 @@ func getRedisClient(serverID int, db int) (redis.Conn, error) {
 	c := pool.Get()
 	_, err := c.Do("SELECT", db)
 	if err != nil {
-		c.Close()
+		if c != nil {
+			c.Close()
+		}
 		return nil, err
 	}
 	return c, nil

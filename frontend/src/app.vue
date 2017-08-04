@@ -22,10 +22,10 @@
         socket:{
             events:{
                 
-                tip(type, msg){
-                    this.$Message[type]({
-                        content: msg,
-                        duration: 10,
+                tip(info){
+                    this.$Message[info.type]({
+                        content: info.msg,
+                        duration: info.duration,
                         closable: true
                     })
                 },
