@@ -131,7 +131,7 @@ func main() {
 	})
 
 	// server http 请求
-	dir := "/mnt/hgfs/code/golang/src/github.com/prettyyjnic/redisSky/frontend"
+	dir := "../../frontend"
 	http.Handle("/", http.FileServer(http.Dir(dir)))
 
 	log.Println("Serving at localhost:80...")
