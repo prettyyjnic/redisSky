@@ -88,7 +88,12 @@ func (task *mongoExportStruct) run() {
 					return
 				}
 				for j := 0; j < l; j += _globalConfigs.System.RowScanLimits {
-					end := _globalConfigs.System.RowScanLimits
+					end := _globalConfigs.System.RowScanLimits - 1
+					list, err := redis.Strings(c.Do("LRANGE", key, j, end))
+					if err != nil {
+						sendExportErrorToAll(err.Error())
+						return
+					}
 				}
 				task.calProcess(1, l)
 				return
