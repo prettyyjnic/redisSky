@@ -14,14 +14,14 @@ Vue.use(Vuex);
 Vue.use(iView);
 
 Vue.use(VueWebsocket, "ws://", {
-// Vue.use(VueWebsocket, "ws://127.0.0.1:80/", {
+// Vue.use(VueWebsocket, "ws://172.27.40.6:80/", {
     reconnection: true,
     transports: ['websocket']
 });
 
 // 路由配置
 const RouterConfig = {
-    mode: 'history',
+    mode: 'hash',
     routes: Routers
 };
 const router = new VueRouter(RouterConfig);
