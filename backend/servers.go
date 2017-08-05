@@ -65,6 +65,7 @@ func UpdateServer(conn *gosocketio.Channel, data interface{}) {
 	for i := 0; i < len(_globalConfigs.Servers); i++ {
 		if server.ID == _globalConfigs.Servers[i].ID {
 			_globalConfigs.Servers[i] = server
+			delete(redisClients, server.ID)
 		}
 	}
 	saveConf()
@@ -76,6 +77,7 @@ func DelServer(conn *gosocketio.Channel, serverid int) {
 
 	for i := 0; i < len(_globalConfigs.Servers); i++ {
 		if serverid == _globalConfigs.Servers[i].ID {
+			delete(redisClients, serverid)
 			_globalConfigs.Servers = append(_globalConfigs.Servers[0:i], _globalConfigs.Servers[i+1:]...)
 			break
 		}
