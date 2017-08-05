@@ -65,9 +65,7 @@ func init() {
 }
 
 func getRedisClient(serverID int, db int) (redis.Conn, error) {
-
 	var ok bool
-
 	pool, ok = redisClients[serverID]
 	if ok == false {
 		pool = redis.NewPool(func() (redis.Conn, error) {
@@ -92,6 +90,7 @@ func getRedisClient(serverID int, db int) (redis.Conn, error) {
 	if pool == nil {
 		return nil, errors.New("redis server id is out of range")
 	}
+	redisClients[serverID] = pool
 	c := pool.Get()
 	_, err := c.Do("SELECT", db)
 	if err != nil {
