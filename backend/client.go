@@ -112,10 +112,6 @@ func closeClient(serverID int) error {
 // checkOperData 检查协议
 func checkOperData(conn *gosocketio.Channel, data interface{}) (operData, bool) {
 	var info operData
-	if reflect.ValueOf(data).Kind() != reflect.Map {
-		sendCmdError(conn, "proto error ")
-		return info, false
-	}
 	var err error
 	var bytes []byte
 	bytes, err = json.Marshal(data)

@@ -15,6 +15,9 @@
 .width100{
     width: 100% !important;
 }
+.key-list{
+    width: 100% !important;
+}
 </style>
 <style lang="less">
 .vertical-center-modal{
@@ -137,10 +140,45 @@
                     <Input v-model="inputKey" placeholder="redis key..." class="width100"></Input>
                 </div>
 
+                <div style="border-bottom: 1px solid #e9e9e9;padding-bottom:6px;margin:6px 0;">
+                    <Checkbox
+                        :indeterminate="indeterminate"
+                        :value="checkAll"
+                        @click.prevent.native="handleCheckAll">全选</Checkbox>
+                    (<span>{{currentKeysNums}}</span>/<span>{{totalKeysNums}}</span>)
+                    <Button style="margin-left:20px;" type="ghost" @click="exportMoal = true">export</Button>
+                    <Modal
+                        title="Export keys 2 mongodb"
+                        v-model="exportMoal"
+                        @on-ok="export2mongodb"
+                        class-name="vertical-center-modal">
+                        <Form :model="mongodb" :label-width="80">
+                            <Form-item label="addr" >
+                                <Input v-model="mongodb.addr" type="text" placeholder="please input mongodb addr..."></Input>
+                            </Form-item>
+                            <Form-item label="port" >
+                                <Input v-model="mongodb.port" type="text" placeholder="please input mongodb port..."></Input>
+                            </Form-item>
+                            <Form-item label="database" >
+                                <Input v-model="mongodb.database" type="text" placeholder="please input mongodb database..."></Input>
+                            </Form-item>
+                            <Form-item label="username" >
+                                <Input v-model="mongodb.username" type="text" placeholder="please input mongodb username..."></Input>
+                            </Form-item>
+                            <Form-item label="password" >
+                                <Input v-model="mongodb.password" type="text" placeholder="please input mongodb password..."></Input>
+                            </Form-item>
+                            <Form-item label="collection" >
+                                <Input v-model="mongodb.collection" type="text" placeholder="please input mongodb collection..."></Input>
+                            </Form-item>
+                        </Form>
+                    </Modal>
+                </div>
                 <div class="overflow-y-show" ref="keysCard" :style="{ 'height': keysCardHeight}" >                    
-                    <ul>
-                        <li class="overflow-hidden" v-for="item in keys"><span class="layout-text" ><router-link :to="getLink(item)">{{item}}</router-link></span></li>
-                    </ul>
+                    <Checkbox-group v-model="checkAllGroup" @on-change="checkAllGroupChange">
+                        <Checkbox class="key-list" v-for="item in keys" :label="item" ><span @click.prevent="jumpLink(item)">{{item}}</span></Checkbox>
+                    </Checkbox-group>
+
                 </div>
             </Card>
         </Col>
@@ -157,8 +195,21 @@
     export default {
         data(){
             return {
+                mongodb: {
+                    addr: "localhost",
+                    database: "default",
+                    port: "27017",
+                    username: "",
+                    password: "",
+                    collection: "default",
+                },
+                exportMoal: false,
+                indeterminate: true,
+                checkAll: false,
+                checkAllGroup: [],
                 inputKey: "",
                 serverdb: 0,
+                totalKeysNums: 0,
                 addKeyMoal: false,
                 keys: this.getKeys(),
                 newItem: {
@@ -170,9 +221,12 @@
                     hashVal: [{field:'', val:''}]
                 }
             }
-        },
-        
+        },        
         computed: {
+            currentKeysNums(){
+                if ( typeof this.keys == 'undefined') { return 0;}
+                return this.keys.length;
+            },
             keysCardHeight(){
                 return window.innerHeight - 260 +"px";
             },
@@ -199,12 +253,51 @@
             }
         },
         methods: {
+            export2mongodb(){
+                var info = {}
+                info.serverid = this.server.id;
+                info.db = parseInt( this.serverdb );
+                info.data = {
+                    mongodb: this.mongodb,
+                    keys: this.checkAllGroup,
+                };
+                this.$socket.emit("Export2mongodb", info)
+            },
+            handleCheckAll () {
+                if (this.indeterminate) {
+                    this.checkAll = false;
+                } else {
+                    this.checkAll = !this.checkAll;
+                }
+                this.indeterminate = false;
+                if (this.checkAll) {
+                    this.checkAllGroup = this.keys;
+                } else {
+                    this.checkAllGroup = [];
+                }
+            },
+            checkAllGroupChange (data) {
+                if (data.length === this.keys.length && data.length > 0) {
+                    this.indeterminate = false;
+                    this.checkAll = true;
+                } else if (data.length > 0) {
+                    this.indeterminate = true;
+                    this.checkAll = false;
+                } else {
+                    this.indeterminate = false;
+                    this.checkAll = false;
+                }
+            },
             getKeys: _.debounce(function(){
                 var info = {}
                 info.serverid = this.server.id;
                 info.db = parseInt( this.serverdb );
                 info.data = this.inputKey;
                 this.$socket.emit("ScanKeys", info)
+                var info = {};
+                info.db = this.serverdb ? parseInt(this.serverdb) : 0;
+                info.serverid = parseInt( this.server.id );
+                this.$socket.emit("GetTotalKeysNums", info); 
             }, 200),
             handleAddList () {
                 this.newItem.listVal.push('');
@@ -231,8 +324,9 @@
                     this.getKeys();
                 }
             },
-            getLink(item){
-                return '/serverid/'+ this.serverid + '/db/' + (this.serverdb ? parseInt(this.serverdb) : 0) +'/key/'+ item;
+            jumpLink(item){
+                var url = '/serverid/'+ this.serverid + '/db/' + (this.serverdb ? parseInt(this.serverdb) : 0) +'/key/'+ item;
+                this.$router.push(url);
             },
             addKey(){
                 // add one key to redis
@@ -263,12 +357,16 @@
         socket:{
             events:{
                 LoadKeys(keys){
+                    this.checkAllGroup = [];
                     if (keys == null) {this.keys = [];return;}
                     keys.sort();
                     this.keys = keys;
                 },
                 ReloadKeys(){
-                    this.getKeys();
+                    this.getKeys();                    
+                },
+                ShowTotalKeysNums(nums){
+                    this.totalKeysNums = nums;
                 }
             }
         }

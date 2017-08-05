@@ -3,9 +3,17 @@ package backend
 import (
 	"bytes"
 	"encoding/json"
+	"strconv"
 
 	gosocketio "github.com/graarh/golang-socketio"
 )
+
+var socketIOServer *gosocketio.Server
+
+//SetSocketIOServer set socketio server
+func SetSocketIOServer(server *gosocketio.Server) {
+	socketIOServer = server
+}
 
 // redisServer 配置
 type redisServer struct {
@@ -99,7 +107,7 @@ func ServerInfo(conn *gosocketio.Channel, serverID int) {
 		sendCmdError(conn, err.Error())
 		return
 	}
-
+	sendCmdReceive(conn, infos)
 	retBytes := bytes.Split(infos.([]byte), []byte("\r\n"))
 	ret := make(map[string][]string)
 	var currentSection string
@@ -113,4 +121,39 @@ func ServerInfo(conn *gosocketio.Channel, serverID int) {
 
 	sendCmdReceive(conn, ret)
 	conn.Emit("ShowServerInfo", ret)
+}
+
+// GetTotalKeysNums get total keys nums
+func GetTotalKeysNums(conn *gosocketio.Channel, data interface{}) {
+	if data, ok := checkOperData(conn, data); ok {
+		sendCmd(conn, "INFO KEYSPACE")
+		c, err := getRedisClient(data.ServerID, data.DB)
+		if err != nil {
+			sendCmdError(conn, err.Error())
+			return
+		}
+		infos, err := c.Do("INFO", "KEYSPACE")
+		if err != nil {
+			sendCmdError(conn, err.Error())
+			return
+		}
+		retBytes := bytes.Split(infos.([]byte), []byte("\r\n"))
+		prefix := []byte("db" + strconv.Itoa(data.DB) + ":")
+		for i := 0; i < len(retBytes); i++ {
+			if bytes.HasPrefix(retBytes[i], prefix) {
+				info := bytes.TrimPrefix(retBytes[i], prefix)
+				keyInfos := bytes.Split(info, []byte(","))
+				keyPrefix := []byte("keys=")
+				for j := 0; j < len(keyInfos); j++ {
+					if bytes.HasPrefix(keyInfos[j], keyPrefix) {
+						nums := bytes.TrimPrefix(keyInfos[j], keyPrefix)
+						conn.Emit("ShowTotalKeysNums", string(nums))
+						return
+					}
+				}
+			}
+		}
+		conn.Emit("ShowTotalKeysNums", 0)
+		return
+	}
 }

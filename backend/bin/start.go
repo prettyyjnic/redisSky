@@ -11,9 +11,7 @@ import (
 
 func main() {
 	server := gosocketio.NewServer(transport.GetDefaultWebsocketTransport())
-	server.On(gosocketio.OnConnection, func(c *gosocketio.Channel) {
-		log.Println("New client connected")
-	})
+	backend.SetSocketIOServer(server)
 
 	server.On("QuerySystemConfigs", func(c *gosocketio.Channel) {
 		c.Emit("loading", 0)
@@ -121,6 +119,28 @@ func main() {
 		c.Emit("loading", 0)
 		defer c.Emit("loadingComplete", 0)
 		backend.ServerInfo(c, serverID)
+	})
+
+	server.On("GetTotalKeysNums", func(c *gosocketio.Channel, data interface{}) {
+		c.Emit("loading", 0)
+		defer c.Emit("loadingComplete", 0)
+		backend.GetTotalKeysNums(c, data)
+	})
+
+	server.On("Export2mongodb", func(c *gosocketio.Channel, data interface{}) {
+		c.Emit("loading", 0)
+		defer c.Emit("loadingComplete", 0)
+		backend.Export2mongodb(c, data)
+	})
+
+	server.On("GetExportTasksProcess", func(c *gosocketio.Channel, data interface{}) {
+		backend.GetExportTasksProcess(c, data)
+	})
+
+	server.On("DelExportTask", func(c *gosocketio.Channel, data int) {
+		c.Emit("loading", 0)
+		defer c.Emit("loadingComplete", 0)
+		backend.DelExportTask(c, data)
 	})
 
 	http.HandleFunc("/socket.io/", func(w http.ResponseWriter, r *http.Request) {
