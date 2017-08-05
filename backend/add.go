@@ -14,6 +14,16 @@ import (
 func AddKey(conn *gosocketio.Channel, data interface{}) {
 	if c, _redisValue, ok := checkRedisValue(conn, data); ok {
 		defer c.Close()
+		// check whether the key is exists
+		exists, err := redis.Int(c.Do("EXISTS", _redisValue.Key))
+		if err != nil {
+			sendCmdError(conn, err.Error())
+			return
+		}
+		if exists == 1 {
+			sendCmdError(conn, "the key is already exists !")
+			return
+		}
 		switch _redisValue.T {
 		case "string":
 			val, ok := (_redisValue.Val).(string)
