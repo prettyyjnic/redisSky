@@ -134,6 +134,9 @@ func sendCmd(conn *gosocketio.Channel, cmd string) {
 
 // sendRedisErr
 func sendCmdError(conn *gosocketio.Channel, cmd string) {
+	if isDebug {
+		logErr(errors.New(cmd))
+	}
 	conn.Emit("cmdErr", cmd)
 }
 

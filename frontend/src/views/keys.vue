@@ -146,13 +146,17 @@
                         :value="checkAll"
                         @click.prevent.native="handleCheckAll">全选</Checkbox>
                     (<span>{{currentKeysNums}}</span>/<span>{{totalKeysNums}}</span>)
-                    <Button style="margin-left:20px;" type="ghost" @click="exportMoal = true">export</Button>
+                    <Button style="margin-left:3px;" type="ghost" @click="exportMoal = true" v-if="showExportBtn">export</Button>
+                    <Button style="margin-left:3px;" type="ghost" @click="getKeys">reload</Button>
                     <Modal
                         title="Export keys 2 mongodb"
                         v-model="exportMoal"
                         @on-ok="export2mongodb"
                         class-name="vertical-center-modal">
                         <Form :model="mongodb" :label-width="80">
+                            <Form-item label="task" >
+                                <Input v-model="mongodb.task" type="text" placeholder="please input mongodb task name..."></Input>
+                            </Form-item>
                             <Form-item label="addr" >
                                 <Input v-model="mongodb.addr" type="text" placeholder="please input mongodb addr..."></Input>
                             </Form-item>
@@ -187,6 +191,12 @@
                 <router-view v-on:refresh="getKeys"></router-view>
             </Card>
         </Col>
+        <Modal
+            v-model="exportSuccessModal"
+            @on-ok="exportPorcess"
+            class-name="vertical-center-modal">
+            <p>导出任务正在后台进行，点击确定查看进度！</p>
+        </Modal>
     </Row>
     
 </template>
@@ -202,7 +212,9 @@
                     username: "",
                     password: "",
                     collection: "default",
+                    task: "",
                 },
+                exportSuccessModal: false,
                 exportMoal: false,
                 indeterminate: true,
                 checkAll: false,
@@ -240,6 +252,9 @@
                     }
                 }
                 return {dbNums:0, id:0}
+            },
+            showExportBtn(){
+                return this.checkAllGroup.length > 0 ? true : false;
             }
         },
         watch: {
@@ -253,12 +268,17 @@
             }
         },
         methods: {
+            exportPorcess(){
+                this.$router.push("/export/process");
+            },
             export2mongodb(){
+                
                 var info = {}
                 info.serverid = this.server.id;
                 info.db = parseInt( this.serverdb );
                 info.data = {
                     mongodb: this.mongodb,
+                    task: this.mongodb.task,
                     keys: this.checkAllGroup,
                 };
                 this.$socket.emit("Export2mongodb", info)
@@ -367,6 +387,9 @@
                 },
                 ShowTotalKeysNums(nums){
                     this.totalKeysNums = nums;
+                },
+                AddExportTaskSuccess(){
+                    this.exportSuccessModal = true;
                 }
             }
         }

@@ -7,7 +7,7 @@
     export default {
         data() {
             return {
-                loading: null
+                loading: []
             };
         },
         mounted() {
@@ -22,13 +22,15 @@
         socket:{
             events:{
                 loading () {
-                    this.loading = this.$Message.loading({
+                    var tmp = this.$Message.loading({
                         content: 'loading ...',
                         duration: 0
                     });
+                    this.loading.push(tmp);
                 },
                 loadingComplete(){
-                    this.loading();
+                    var tmp = this.loading.pop();
+                    tmp();
                 },
                 tip(info){
                     this.$Message[info.type]({

@@ -6,6 +6,13 @@ const routers = [{
     component: (resolve) => require(['./views/index.vue'], resolve),    
     children: [
         {
+            path: '/export/process',
+            meta: {
+                title: 'export -redisSky manager'
+            },
+            component: (resolve) => require(['./views/export/process.vue'], resolve)
+        },
+        {
             path: '/servers/edit/:serverid?',
             meta: {
                 title: 'servers -redisSky manager'

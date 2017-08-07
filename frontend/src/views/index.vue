@@ -79,6 +79,10 @@
                             <Icon type="settings"></Icon>
                             <span class="layout-text" ><router-link to='/system/configs'>configs</router-link></span>
                         </Menu-item>
+                        <Menu-item name="export">
+                            <Icon type="ios-refresh-empty"></Icon>
+                            <span class="layout-text" ><router-link to='/export/process'>export process</router-link></span>
+                        </Menu-item>
                     </Menu-group>
 
                     <Menu-group title="Servers">
@@ -136,7 +140,7 @@
         created () {
             // 组件创建完后获取数据，
             // 此时 data 已经被 observed 了
-            this.$socket.emit("QueryServers")
+            this.$socket.emit("QueryServers");
         },
         computed: {
             iconSize () {
