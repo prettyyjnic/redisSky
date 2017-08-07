@@ -13,8 +13,8 @@ Vue.use(Vuex);
 
 Vue.use(iView);
 
-// Vue.use(VueWebsocket, "ws://", {
-Vue.use(VueWebsocket, "ws://172.27.40.6:80/", {
+Vue.use(VueWebsocket, "ws://", {
+// Vue.use(VueWebsocket, "ws://172.27.40.6:80/", {
     reconnection: true,
     transports: ['websocket']
 });
@@ -62,7 +62,6 @@ const store = new Vuex.Store({
         addServer: function(state, server){
             state.servers.push(server);
         }
-       
     },
     actions: {
         saveServers: function({ commit }, servers){
