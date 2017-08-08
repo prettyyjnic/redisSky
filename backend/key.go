@@ -45,7 +45,7 @@ func scan(conn *gosocketio.Channel, c redis.Conn, key, field string, t scanType,
 				sendCmdError(conn, "key can't not be empty")
 				return 0, nil
 			}
-			if !strings.ContainsAny(key, "*") {
+			if !strings.ContainsAny(field, "*") {
 				field = field + "*"
 			}
 			cmd = fmt.Sprintf("%s %s %d MATCH %s COUNT %d", method, key, iterate, field, _globalConfigs.System.KeyScanLimits)
