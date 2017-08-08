@@ -11,7 +11,7 @@ import (
 	gosocketio "github.com/graarh/golang-socketio"
 )
 
-func scan(conn *gosocketio.Channel, c redis.Conn, key, field string, t scanType, iterate, maxScanLimits int) (int, []string) {
+func scan(conn *gosocketio.Channel, c redis.Conn, key, field string, t scanType, iterate int64, maxScanLimits int) (int64, []string) {
 
 	var method, cmd string
 	var ret []interface{}
@@ -64,7 +64,7 @@ func scan(conn *gosocketio.Channel, c redis.Conn, key, field string, t scanType,
 			return 0, nil
 		}
 		keys = append(keys, tmp...)
-		iterate, err = redis.Int(ret[0], nil)
+		iterate, err = redis.Int64(ret[0], nil)
 		if err != nil {
 			sendCmdError(conn, "redis error: "+err.Error())
 			return 0, nil

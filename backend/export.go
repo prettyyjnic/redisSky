@@ -3,7 +3,9 @@ package backend
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
+	"reflect"
 	"strconv"
 	"sync"
 	"time"
@@ -15,21 +17,24 @@ import (
 )
 
 type mongoConf struct {
-	Addr       string `json:"addr"`
-	Port       string `json:"port"`
-	Database   string `json:"database"`
-	Username   string `json:"username"`
-	Password   string `json:"password"`
-	Collection string `json:"collection"`
+	Addr        string `json:"addr"`
+	Port        string `json:"port"`
+	Database    string `json:"database"`
+	Username    string `json:"username"`
+	Password    string `json:"password"`
+	Collection  string `json:"collection"`
+	MaxChipSize int    `json:"maxChipSize"`
 }
 
 type mongoExportStruct struct {
-	ID           int       `json:"id"`
-	Mongodb      mongoConf `json:"mongodb"`
-	Keys         []string  `json:"keys"`
-	Process      float32   `json:"process"`
-	ErrMsg       string    `json:"errMsg"`
-	Task         string    `json:"task"`
+	ID      int       `json:"id"`
+	Mongodb mongoConf `json:"mongodb"`
+	Keys    []string  `json:"keys"`
+	Process float32   `json:"process"`
+	ErrMsg  string    `json:"errMsg"`
+	Task    string    `json:"task"`
+
+	complete     chan int
 	processMutex *sync.RWMutex
 	redisClient  *redis.Conn
 	session      *mgo.Session
@@ -55,13 +60,13 @@ func (task *mongoExportStruct) calProcess(currentKeyLen, currentKeyTotal int) {
 	}
 	task.processMutex.Lock()
 	task.Process += float32(currentKeyLen) / float32(currentKeyTotal) / float32(len(task.Keys)*2)
-	task.processMutex.Unlock()
 	if isDebug {
 		log.Println("calProcess", task.Process)
 	}
+	task.processMutex.Unlock()
 }
 
-func scanVals(c redis.Conn, key string, t scanType, iterate int) (int, []string, error) {
+func scanVals(c redis.Conn, key string, t scanType, iterate int64) (int64, []string, error) {
 	var method string
 	var ret []interface{}
 	var keys []string
@@ -82,7 +87,7 @@ func scanVals(c redis.Conn, key string, t scanType, iterate int) (int, []string,
 	if err != nil {
 		return 0, nil, err
 	}
-	iterate, err = redis.Int(ret[0], nil)
+	iterate, err = redis.Int64(ret[0], nil)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -90,11 +95,16 @@ func scanVals(c redis.Conn, key string, t scanType, iterate int) (int, []string,
 }
 
 func (task *mongoExportStruct) run() {
+
 	task.waitGroup.Add(2)
 	go func() {
+		var isCloseMgoChan = false
 		defer func() {
 			task.waitGroup.Done()
 			task.session.Close()
+			if !isCloseMgoChan {
+				close(task.mgoChan)
+			}
 			if isDebug {
 				log.Println("close mongo goroutine ")
 			}
@@ -124,25 +134,43 @@ func (task *mongoExportStruct) run() {
 
 					if err != nil {
 						if isDebug {
-							logErr(err)
+							logErr(errors.New("export key: " + _redisVal.Key + " occur " + err.Error()))
 						}
 						task.errorChan <- err
+						isCloseMgoChan = true
+						close(task.mgoChan)
 						return
 					}
-					task.calProcess(1, 1)
+					v := reflect.ValueOf(_redisVal.Val)
+					switch v.Kind() {
+					case reflect.Map, reflect.Slice, reflect.Array:
+						task.calProcess(v.Len(), _redisVal.Size)
+					default:
+						task.calProcess(1, 1)
+					}
 				}
 				if _redisVal.Val == nil && !isClose {
 					return
 				}
+			case _ = <-task.complete:
+				return
 			}
 		}
 	}()
 
 	go func() {
 		defer func() {
+			if err := recover(); err != nil {
+				if isDebug {
+					logErr(fmt.Errorf("err occur: %s", err))
+				}
+			}
 			task.waitGroup.Done()
 			(*task.redisClient).Close()
-			close(task.mgoChan)
+			if isDebug {
+				log.Println("close redis goroutine ")
+			}
+			task.complete <- 1
 		}()
 		c := *task.redisClient
 
@@ -151,6 +179,7 @@ func (task *mongoExportStruct) run() {
 		var err error
 
 		for i := 0; i < keysNums; i++ {
+			var chipNums int
 			select {
 			case err = <-task.errorChan:
 				if err != nil {
@@ -196,7 +225,7 @@ func (task *mongoExportStruct) run() {
 					}
 					_redisVal.Size = l
 					var tmpList []string
-					tmpList = make([]string, 0, 1000)
+					tmpList = make([]string, 0, _globalConfigs.System.RowScanLimits)
 					for j := 0; j < l; j += _globalConfigs.System.RowScanLimits {
 						end := _globalConfigs.System.RowScanLimits - 1
 						list, err := redis.Strings(c.Do("LRANGE", key, j, end))
@@ -209,6 +238,15 @@ func (task *mongoExportStruct) run() {
 						}
 						tmpList = append(tmpList, list...)
 						task.calProcess(len(list), l)
+						if len(tmpList) >= task.Mongodb.MaxChipSize { // make Chip
+							_redisVal.Val = tmpList
+							tmp := _redisVal.Key
+							_redisVal.Key = _redisVal.Key + "_skychip" + strconv.Itoa(chipNums)
+							chipNums++
+							task.mgoChan <- _redisVal
+							_redisVal.Key = tmp
+							tmpList = make([]string, 0, _globalConfigs.System.RowScanLimits)
+						}
 					}
 					_redisVal.Val = tmpList
 				case "set":
@@ -219,8 +257,8 @@ func (task *mongoExportStruct) run() {
 					}
 					_redisVal.Size = l
 					var tmpList []string
-					tmpList = make([]string, 0, 1000)
-					var iter int
+					tmpList = make([]string, 0, _globalConfigs.System.RowScanLimits)
+					var iter int64
 					var vals []string
 					for {
 						iter, vals, err = scanVals(c, key, setScan, iter)
@@ -236,6 +274,15 @@ func (task *mongoExportStruct) run() {
 						if iter == 0 {
 							break
 						}
+						if len(tmpList) >= task.Mongodb.MaxChipSize { // make Chip
+							_redisVal.Val = tmpList
+							tmp := _redisVal.Key
+							_redisVal.Key = _redisVal.Key + "_skychip" + strconv.Itoa(chipNums)
+							chipNums++
+							task.mgoChan <- _redisVal
+							_redisVal.Key = tmp
+							tmpList = make([]string, 0, _globalConfigs.System.RowScanLimits)
+						}
 					}
 					_redisVal.Val = tmpList
 				case "zset":
@@ -247,7 +294,7 @@ func (task *mongoExportStruct) run() {
 					_redisVal.Size = l
 					var tmpMap map[string]float64
 					tmpMap = make(map[string]float64)
-					var iter int
+					var iter int64
 					var vals []string
 					for {
 						iter, vals, err = scanVals(c, key, zsetScan, iter)
@@ -266,6 +313,15 @@ func (task *mongoExportStruct) run() {
 						if iter == 0 {
 							break
 						}
+						if len(tmpMap) >= task.Mongodb.MaxChipSize { // make Chip
+							_redisVal.Val = tmpMap
+							tmp := _redisVal.Key
+							_redisVal.Key = _redisVal.Key + "_skychip" + strconv.Itoa(chipNums)
+							chipNums++
+							task.mgoChan <- _redisVal
+							_redisVal.Key = tmp
+							tmpMap = make(map[string]float64)
+						}
 					}
 					_redisVal.Val = tmpMap
 				case "hash":
@@ -280,7 +336,7 @@ func (task *mongoExportStruct) run() {
 					_redisVal.Size = l
 					var tmpMap map[string]string
 					tmpMap = make(map[string]string)
-					var iter int
+					var iter int64
 					var vals []string
 					for {
 						iter, vals, err = scanVals(c, key, hashScan, iter)
@@ -301,27 +357,39 @@ func (task *mongoExportStruct) run() {
 						if iter == 0 {
 							break
 						}
+						if len(tmpMap) >= task.Mongodb.MaxChipSize { // make Chip
+							_redisVal.Val = tmpMap
+							tmp := _redisVal.Key
+							_redisVal.Key = _redisVal.Key + "_skychip" + strconv.Itoa(chipNums)
+							chipNums++
+							task.mgoChan <- _redisVal
+							_redisVal.Key = tmp
+							tmpMap = make(map[string]string)
+						}
 					}
 					_redisVal.Val = tmpMap
 				default:
 					task.errorChan <- errors.New("redis: keyType [" + t + "] of key [" + key + "]  is not support")
 					return
 				}
-
+				if chipNums > 0 {
+					_redisVal.Key = _redisVal.Key + "_skychip" + strconv.Itoa(chipNums)
+				}
 				task.mgoChan <- _redisVal
 			}
 		}
-
 	}()
 	task.waitGroup.Wait()
-	task.Process = 1
 	select {
 	case err := <-task.errorChan:
 		if err != nil {
 			task.ErrMsg = err.Error()
 		}
+	default:
+		task.Process = 1
 	}
 	close(task.errorChan)
+	close(task.complete)
 }
 
 //Export2mongodb export keys to mongodb
@@ -358,8 +426,12 @@ func Export2mongodb(conn *gosocketio.Channel, data interface{}) {
 		exportInfo.redisClient = &redisClient
 		exportInfo.mgoChan = make(chan redisValue, 5)
 		exportInfo.errorChan = make(chan error, 1)
+		exportInfo.complete = make(chan int, 1)
 		exportInfo.processMutex = new(sync.RWMutex)
 		exportInfo.waitGroup = new(sync.WaitGroup)
+		if exportInfo.Mongodb.MaxChipSize == 0 {
+			exportInfo.Mongodb.MaxChipSize = 100000
+		}
 		exportStorage = append(exportStorage, &exportInfo)
 		go exportInfo.run()
 		conn.Emit("AddExportTaskSuccess", 0)

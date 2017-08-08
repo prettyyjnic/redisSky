@@ -175,6 +175,9 @@
                             <Form-item label="collection" >
                                 <Input v-model="mongodb.collection" type="text" placeholder="please input mongodb collection..."></Input>
                             </Form-item>
+                            <Form-item label="maxChipSize" >
+                                <Input-number v-model="mongodb.maxChipSize" :min="10000" :step="100000" placeholder="please input mongodb maxChipSize..."></Input-number>
+                            </Form-item>
                         </Form>
                     </Modal>
                 </div>
@@ -213,6 +216,7 @@
                     password: "",
                     collection: "default",
                     task: "",
+                    maxChipSize: 100000,
                 },
                 exportSuccessModal: false,
                 exportMoal: false,

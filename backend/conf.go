@@ -40,7 +40,7 @@ func (message Message) marshal() ([]byte, error) {
 	return json.Marshal(message)
 }
 
-var isDebug = true
+var isDebug = false
 
 // _configFilePath 配置文件路径
 var _configFilePath = "./conf.json"
