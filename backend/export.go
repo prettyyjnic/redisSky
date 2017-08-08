@@ -407,6 +407,7 @@ func Export2mongodb(conn *gosocketio.Channel, data interface{}) {
 			Password: exportInfo.Mongodb.Password,
 			Database: exportInfo.Mongodb.Database,
 			Addrs:    []string{exportInfo.Mongodb.Addr + ":" + exportInfo.Mongodb.Port},
+			Timeout:  time.Second * 3,
 		})
 		if err != nil {
 			sendCmdError(conn, err.Error())
