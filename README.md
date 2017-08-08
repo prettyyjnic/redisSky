@@ -26,4 +26,4 @@ cd $项目根目录/backend/bin && go run start.go # 启动服务
 ```
 
 ## 截图：
-![image](https://github.com/prettyyjnic/redisSky/blob/master/screenShot/screenShot.png)
+![image](http://59.110.239.205/screenShot/screenShot.png)
