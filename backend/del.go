@@ -4,91 +4,150 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/garyburd/redigo/redis"
 	gosocketio "github.com/graarh/golang-socketio"
 )
+
+// DelKeys del mutil key
+func DelKeys(conn *gosocketio.Channel, data interface{}) {
+	if operData, ok := checkOperData(conn, data); ok {
+		data, ok := (operData.Data).([]interface{})
+		if !ok {
+			sendCmdError(conn, "data should be array of strings")
+			return
+		}
+		if len(data) <= 0 {
+			sendCmdError(conn, "keys could not be empty")
+			return
+		}
+		var keys []string
+		for i := 0; i < len(data); i++ {
+			if key, ok := data[i].(string); ok {
+				keys = append(keys, key)
+			} else {
+				sendCmdError(conn, "data should be array of strings")
+				return
+			}
+		}
+
+		waitGroup := new(sync.WaitGroup)
+		for i := 0; i < len(keys); i++ {
+			waitGroup.Add(1)
+			go func(i int) {
+				defer func() {
+					waitGroup.Done()
+					if isDebug {
+						log.Println("del keys finish ", i)
+					}
+				}()
+				c, err := getRedisClient(operData.ServerID, operData.DB)
+				if err != nil {
+					sendCmdError(conn, "redis error: "+err.Error())
+					return
+				}
+				defer c.Close()
+				if !del(conn, c, keys[i]) {
+					return
+				}
+			}(i)
+		}
+		waitGroup.Wait()
+		if isDebug {
+			log.Println("del keys finish all")
+		}
+		conn.Emit("tip", &info{"success", "del success!", 2})
+		conn.Emit("ReloadKeys", 0)
+	}
+}
+
+func del(conn *gosocketio.Channel, c redis.Conn, key string) bool {
+	t, err := keyType(conn, c, key)
+	if err != nil {
+		return false
+	}
+	switch t {
+	case "none":
+		sendCmdError(conn, "key: "+key+" is not exists")
+	case "string":
+		delKey(conn, c, key)
+	case "list":
+		var limits = int64(_globalConfigs.System.DelRowLimits)
+		if sizes, ok := checkBigKey(conn, c, key, "list"); ok {
+			// else use ltrim
+			for end := sizes - 1; end >= 0; end = end - limits {
+				start := end - limits
+				if start < 0 {
+					start = 0
+				}
+				cmd := fmt.Sprintf("LTRIM %s %d %d", key, start, end)
+				sendCmd(conn, cmd)
+				data, err := c.Do("LTRIM", key, start, end)
+				if err != nil {
+					sendCmdError(conn, err.Error())
+					return false
+				}
+				sendCmdReceive(conn, data)
+			}
+		}
+
+	case "hash", "set", "zset":
+		// var limits = int64(_globalConfigs.System.DelRowLimits)
+		if _, ok := checkBigKey(conn, c, key, t); ok {
+			var delMethod string
+			var _scanType scanType
+			switch t {
+			case "hash":
+				_scanType = hashScan
+				delMethod = "HDEL"
+			case "set":
+				_scanType = setScan
+				delMethod = "SREM"
+			case "zset":
+				_scanType = zsetScan
+				delMethod = "ZREM"
+			}
+			var iterater int64
+
+			for {
+				iterater, fields := scan(conn, c, key, "", _scanType, iterater, _globalConfigs.System.RowScanLimits)
+				slice := make([]interface{}, 0, _globalConfigs.System.RowScanLimits)
+				slice = append(slice, key)
+				for i := 0; i < len(fields); i = i + 2 {
+					slice = append(slice, fields[i])
+				}
+				cmd := fmt.Sprintf("%s %v", delMethod, slice)
+				sendCmd(conn, cmd)
+				_, err := redis.Int64(c.Do(delMethod, slice...))
+				slice = nil
+				if err != nil {
+					sendCmdError(conn, err.Error())
+					return false
+				}
+				if iterater == 0 {
+					break
+				}
+			}
+
+		}
+
+	}
+	return true
+	// conn.Emit("ReloadKeys", nil)
+}
 
 // DelKey del one key
 func DelKey(conn *gosocketio.Channel, data interface{}) {
 	if c, _redisValue, ok := checkRedisValue(conn, data); ok {
 		defer c.Close()
 		var key = _redisValue.Key
-		t, err := keyType(conn, c, key)
-		if err == nil {
-			switch t {
-			case "none":
-				sendCmdError(conn, "key: "+key+" is not exists")
-			case "string":
-				delKey(conn, c, key)
-
-			case "list":
-				var limits = int64(_globalConfigs.System.DelRowLimits)
-				if sizes, ok := checkBigKey(conn, c, key, "list"); ok {
-					// else use ltrim
-					for end := sizes - 1; end >= 0; end = end - limits {
-						start := end - limits
-						if start < 0 {
-							start = 0
-						}
-						cmd := fmt.Sprintf("LTRIM %s %d %d", key, start, end)
-						sendCmd(conn, cmd)
-						data, err := c.Do("LTRIM", key, start, end)
-						if err != nil {
-							sendCmdError(conn, err.Error())
-							return
-						}
-						sendCmdReceive(conn, data)
-					}
-				}
-
-			case "hash", "set", "zset":
-				// var limits = int64(_globalConfigs.System.DelRowLimits)
-				if _, ok := checkBigKey(conn, c, key, t); ok {
-					var delMethod string
-					var _scanType scanType
-					switch t {
-					case "hash":
-						_scanType = hashScan
-						delMethod = "HDEL"
-					case "set":
-						_scanType = setScan
-						delMethod = "SREM"
-					case "zset":
-						_scanType = zsetScan
-						delMethod = "ZREM"
-					}
-					var iterater int64
-
-					for {
-						iterater, fields := scan(conn, c, key, "", _scanType, iterater, _globalConfigs.System.RowScanLimits)
-						slice := make([]interface{}, 0, _globalConfigs.System.RowScanLimits)
-						slice = append(slice, key)
-						for i := 0; i < len(fields); i = i + 2 {
-							slice = append(slice, fields[i])
-						}
-						cmd := fmt.Sprintf("%s %v", delMethod, slice)
-						sendCmd(conn, cmd)
-						_, err := redis.Int64(c.Do(delMethod, slice...))
-						slice = nil
-						if err != nil {
-							sendCmdError(conn, err.Error())
-							return
-						}
-						if iterater == 0 {
-							break
-						}
-					}
-
-				}
-
-			}
-
+		if del(conn, c, key) {
 			conn.Emit("DelSuccess", 0)
 			conn.Emit("tip", &info{"success", "del success!", 2})
-			// conn.Emit("ReloadKeys", nil)
 		}
 	}
 }

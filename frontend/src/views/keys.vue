@@ -146,7 +146,9 @@
                         :value="checkAll"
                         @click.prevent.native="handleCheckAll">全选</Checkbox>
                     (<span>{{currentKeysNums}}</span>/<span>{{totalKeysNums}}</span>)
-                    <Button style="margin-left:3px;" type="ghost" @click="exportMoal = true" v-if="showExportBtn">export</Button>
+                    <br/>
+                    <Button style="margin-left:3px;" type="ghost" @click="exportMoal = true" v-if="showMutilFuncBtn">export</Button>
+                    <Button style="margin-left:3px;" type="ghost" @click="delKeys" v-if="showMutilFuncBtn">delete</Button>
                     <Button style="margin-left:3px;" type="ghost" @click="getKeys">reload</Button>
                     <Modal
                         title="Export keys 2 mongodb"
@@ -257,7 +259,7 @@
                 }
                 return {dbNums:0, id:0}
             },
-            showExportBtn(){
+            showMutilFuncBtn(){
                 return this.checkAllGroup.length > 0 ? true : false;
             }
         },
@@ -275,8 +277,14 @@
             exportPorcess(){
                 this.$router.push("/export/process");
             },
-            export2mongodb(){
-                
+            delKeys(){
+                var info = {}
+                info.serverid = this.server.id;
+                info.db = parseInt( this.serverdb );
+                info.data = this.checkAllGroup;
+                this.$socket.emit("DelKeys", info)
+            },
+            export2mongodb(){                
                 var info = {}
                 info.serverid = this.server.id;
                 info.db = parseInt( this.serverdb );

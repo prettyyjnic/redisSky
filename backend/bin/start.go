@@ -79,6 +79,12 @@ func main() {
 		backend.Rename(c, data)
 	})
 
+	server.On("DelKeys", func(c *gosocketio.Channel, data interface{}) {
+		c.Emit("loading", 0)
+		defer c.Emit("loadingComplete", 0)
+		backend.DelKeys(c, data)
+	})
+
 	server.On("DelKey", func(c *gosocketio.Channel, data interface{}) {
 		c.Emit("loading", 0)
 		defer c.Emit("loadingComplete", 0)
