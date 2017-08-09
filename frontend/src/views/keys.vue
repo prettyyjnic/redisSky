@@ -278,13 +278,19 @@
             '$route': 'reload',
             // 如果 question 发生改变，这个函数就会运行
             inputKey () {
+                this.initKeys();
                 this.getKeys();
             },
             serverdb (){
+                this.initKeys();                
                 this.getKeys();                
             }
         },
         methods: {
+            initKeys(){
+                this.keys = [];
+                this.keysIter = false;
+            },
             getReqInfo(){
                 var info = {};
                 info.serverid = this.server.id;
@@ -365,8 +371,7 @@
                 if (this.serverid != this.$route.params.serverid || this.serverdb != this.$route.params.db) {
                     this.inputKey = "";
                     this.serverid = parseInt( this.$route.params.serverid );
-                    this.keysIter = false;
-                    this.keys = [];
+                    this.initKeys();
                     this.getKeys();
                 }
             },
@@ -411,8 +416,11 @@
                     this.keys.sort();
                     this.loadingMore = false;
                 },
+                AddKeySuccess(key){
+                    this.keys.push(key);
+                },
                 ReloadKeys(){
-                    this.keys = [];
+                    this.initKeys();
                     this.getKeys();                    
                 },
                 ShowTotalKeysNums(nums){

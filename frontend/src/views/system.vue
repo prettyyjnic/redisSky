@@ -23,13 +23,13 @@
                     <Input-number v-model="sysConfigs.executionTimeout" placeholder="please input execution timeout..." :min="1" :step="100"></Input-number>
                 </Form-item>
                 <Form-item prop="keyScanLimits" label="keyScanLimits">
-                    <Input-number v-model="sysConfigs.keyScanLimits" placeholder="please input key scan limits..." :min="1" :step="100"></Input-number>
+                    <Input-number v-model="sysConfigs.keyScanLimits" placeholder="please input key scan limits..." :min="100" :step="100"></Input-number>
                 </Form-item>
                 <Form-item prop="rowScanLimits" label="rowScanLimits">
-                    <Input-number v-model="sysConfigs.rowScanLimits" placeholder="please input row scan limits..." :min="1" :step="100"></Input-number>
+                    <Input-number v-model="sysConfigs.rowScanLimits" placeholder="please input row scan limits..." :min="100" :step="100"></Input-number>
                 </Form-item>
                 <Form-item prop="delRowLimits" label="delRowLimits">
-                    <Input-number v-model="sysConfigs.delRowLimits" placeholder="please input del row limits..." :min="1" :step="100"></Input-number>
+                    <Input-number v-model="sysConfigs.delRowLimits" placeholder="please input del row limits..." :min="100" :step="100"></Input-number>
                 </Form-item>
                 <Form-item>
                     <Button type="primary"  @click="handleSubmit('sysConfigs')">提交</Button>

@@ -78,7 +78,7 @@ func AddKey(conn *gosocketio.Channel, data interface{}) {
 			return
 		}
 
-		conn.Emit("ReloadKeys", _redisValue.Key)
+		conn.Emit("AddKeySuccess", _redisValue.Key)
 		conn.Emit("tip", &info{"success", "add success!", 2})
 	}
 }
