@@ -15,7 +15,9 @@ prettyyjnic@qq.com
 ## 特性：
 1. 使用 redis scan 系列命令进行加载，避免 超大 key 加载慢
 2. 支持批量导出 key 到 mongodb
-3. 简洁美观的界面
+3. 滚动加载更多key
+4. 批量删除key
+5. 简洁美观的界面
 
 ## 使用：
 ```
