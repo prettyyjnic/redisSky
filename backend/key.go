@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -10,6 +11,16 @@ import (
 	"github.com/garyburd/redigo/redis"
 	gosocketio "github.com/graarh/golang-socketio"
 )
+
+type scanInfoStruct struct {
+	Key  string `json:"key"`
+	Iter int64  `json:"iter"`
+}
+
+type scanResultStruct struct {
+	Keys []string `json:"keys"`
+	Iter int64    `json:"iter"`
+}
 
 func scan(conn *gosocketio.Channel, c redis.Conn, key, field string, t scanType, iterate int64, maxScanLimits int) (int64, []string) {
 
@@ -80,10 +91,11 @@ func scan(conn *gosocketio.Channel, c redis.Conn, key, field string, t scanType,
 // ScanKeys scan redis key
 func ScanKeys(conn *gosocketio.Channel, data interface{}) {
 	if info, ok := checkOperData(conn, data); ok {
-		key, ok := (info.Data).(string)
-		if !ok {
-			sendCmdReceive(conn, info.Data)
-			sendCmdError(conn, "key should be string!")
+		tmpBytes, _ := json.Marshal(info.Data)
+		var scanInfo scanInfoStruct
+		err := json.Unmarshal(tmpBytes, &scanInfo)
+		if err != nil {
+			sendCmdError(conn, "Unmarshal error: "+err.Error())
 			return
 		}
 		c, err := getRedisClient(info.ServerID, info.DB)
@@ -92,8 +104,11 @@ func ScanKeys(conn *gosocketio.Channel, data interface{}) {
 			return
 		}
 		defer c.Close()
-		_, keys := scan(conn, c, key, "", keyScan, 0, _globalConfigs.System.KeyScanLimits)
-		conn.Emit("LoadKeys", keys)
+		iter, keys := scan(conn, c, scanInfo.Key, "", keyScan, scanInfo.Iter, _globalConfigs.System.KeyScanLimits)
+		result := scanResultStruct{
+			keys, iter,
+		}
+		conn.Emit("LoadKeys", result)
 	}
 }
 

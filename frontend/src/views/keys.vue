@@ -18,6 +18,13 @@
 .key-list{
     width: 100% !important;
 }
+.spin-container{
+    display: inline-block;
+    width: 100%;
+    margin: 0 auto;
+    height: 50px;
+    position: relative;
+}
 </style>
 <style lang="less">
 .vertical-center-modal{
@@ -183,11 +190,13 @@
                         </Form>
                     </Modal>
                 </div>
-                <div class="overflow-y-show" ref="keysCard" :style="{ 'height': keysCardHeight}" >                    
+                <div class="overflow-y-show" ref="keysCard" :style="{ 'height': keysCardHeight}" v-infinite-scroll="getKeys" infinite-scroll-disabled="busy" infinite-scroll-distance="10">                    
                     <Checkbox-group v-model="checkAllGroup" @on-change="checkAllGroupChange">
                         <Checkbox class="key-list" v-for="item in keys" :label="item" ><span @click.prevent="jumpLink(item)">{{item}}</span></Checkbox>
                     </Checkbox-group>
-
+                    <div class="spin-container" v-if="loadingMore">
+                        <Spin fix></Spin>
+                    </div>
                 </div>
             </Card>
         </Col>
@@ -220,6 +229,7 @@
                     task: "",
                     maxChipSize: 100000,
                 },
+                loadingMore: true,
                 exportSuccessModal: false,
                 exportMoal: false,
                 indeterminate: true,
@@ -229,7 +239,8 @@
                 serverdb: 0,
                 totalKeysNums: 0,
                 addKeyMoal: false,
-                keys: this.getKeys(),
+                keys: [],// this.getKeys(),
+                keysIter: false,
                 newItem: {
                     t: 'string',
                     stringVal: '',
@@ -274,20 +285,22 @@
             }
         },
         methods: {
+            getReqInfo(){
+                var info = {};
+                info.serverid = this.server.id;
+                info.db = parseInt( this.serverdb );
+                return info;
+            },
             exportPorcess(){
                 this.$router.push("/export/process");
             },
             delKeys(){
-                var info = {}
-                info.serverid = this.server.id;
-                info.db = parseInt( this.serverdb );
+                var info = this.getReqInfo();
                 info.data = this.checkAllGroup;
                 this.$socket.emit("DelKeys", info)
             },
             export2mongodb(){                
-                var info = {}
-                info.serverid = this.server.id;
-                info.db = parseInt( this.serverdb );
+                var info = this.getReqInfo();
                 info.data = {
                     mongodb: this.mongodb,
                     task: this.mongodb.task,
@@ -321,14 +334,13 @@
                 }
             },
             getKeys: _.debounce(function(){
-                var info = {}
-                info.serverid = this.server.id;
-                info.db = parseInt( this.serverdb );
-                info.data = this.inputKey;
+                if (this.keysIter === 0) {return;}
+                this.loadingMore = true;
+                var info = this.getReqInfo();
+                info.data = {};
+                info.data.key = this.inputKey;
+                info.data.iter = parseInt( this.keysIter );
                 this.$socket.emit("ScanKeys", info)
-                var info = {};
-                info.db = this.serverdb ? parseInt(this.serverdb) : 0;
-                info.serverid = parseInt( this.server.id );
                 this.$socket.emit("GetTotalKeysNums", info); 
             }, 200),
             handleAddList () {
@@ -353,6 +365,8 @@
                 if (this.serverid != this.$route.params.serverid || this.serverdb != this.$route.params.db) {
                     this.inputKey = "";
                     this.serverid = parseInt( this.$route.params.serverid );
+                    this.keysIter = false;
+                    this.keys = [];
                     this.getKeys();
                 }
             },
@@ -362,9 +376,7 @@
             },
             addKey(){
                 // add one key to redis
-                var info = {};
-                info.db = this.serverdb ? parseInt(this.serverdb) : 0;
-                info.serverid = parseInt( this.server.id );
+                var info = this.getReqInfo();
                 info.data = {}
                 info.data.key = this.newItem.key;
                 if (this.newItem.t == 'string') {
@@ -388,13 +400,19 @@
         },
         socket:{
             events:{
-                LoadKeys(keys){
-                    this.checkAllGroup = [];
-                    if (keys == null) {this.keys = [];return;}
-                    keys.sort();
-                    this.keys = keys;
+                LoadKeys(info){
+                    if (this.keysIter) {
+                        this.checkAllGroup = [];
+                    }
+                    if (info.keys !== null) {
+                        this.keys.unshift.apply(this.keys, info.keys );
+                        this.keysIter = info.iter;
+                    }
+                    this.keys.sort();
+                    this.loadingMore = false;
                 },
                 ReloadKeys(){
+                    this.keys = [];
                     this.getKeys();                    
                 },
                 ShowTotalKeysNums(nums){

@@ -7,14 +7,16 @@ import Util from './libs/util';
 import App from './app.vue';
 import 'iview/dist/styles/iview.css';
 import VueWebsocket from "vue-websocket";
+import infiniteScroll from 'vue-infinite-scroll';
 
+Vue.use(infiniteScroll);
 Vue.use(VueRouter);
 Vue.use(Vuex);
 
 Vue.use(iView);
 
-Vue.use(VueWebsocket, "ws://", {
-// Vue.use(VueWebsocket, "ws://172.27.40.6:80/", {
+// Vue.use(VueWebsocket, "ws://", {
+Vue.use(VueWebsocket, "ws://172.27.40.6:80/", {
     reconnection: true,
     transports: ['websocket']
 });
