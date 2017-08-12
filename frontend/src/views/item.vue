@@ -467,7 +467,11 @@ import Vue from 'vue';
                     this.dataValue.ttl = ttl;
                 },
                 ReloadValue(){
-                    this.routeReload();
+                    if (this.dataValue.t=="string" || this.dataValue.t == "list") {
+                        this.routeReload();
+                    }else{
+                        this.scanRemote();
+                    }
                 },
                 ReloadName(newKey){
                     this.$route.params.key = this.key = newKey;

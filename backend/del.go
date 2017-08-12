@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/garyburd/redigo/redis"
 	gosocketio "github.com/graarh/golang-socketio"
@@ -34,32 +32,18 @@ func DelKeys(conn *gosocketio.Channel, data interface{}) {
 				return
 			}
 		}
-
-		waitGroup := new(sync.WaitGroup)
+		c, err := getRedisClient(operData.ServerID, operData.DB)
+		if err != nil {
+			sendCmdError(conn, "getRedisError"+err.Error())
+			return
+		}
+		defer c.Close()
 		for i := 0; i < len(keys); i++ {
-			waitGroup.Add(1)
-			go func(i int) {
-				defer func() {
-					waitGroup.Done()
-					if isDebug {
-						log.Println("del keys finish ", i)
-					}
-				}()
-				c, err := getRedisClient(operData.ServerID, operData.DB)
-				if err != nil {
-					sendCmdError(conn, "redis error: "+err.Error())
-					return
-				}
-				defer c.Close()
-				if !del(conn, c, keys[i]) {
-					return
-				}
-			}(i)
+			if !del(conn, c, keys[i]) {
+				return
+			}
 		}
-		waitGroup.Wait()
-		if isDebug {
-			log.Println("del keys finish all")
-		}
+
 		conn.Emit("tip", &info{"success", "del success!", 2})
 		conn.Emit("ReloadKeys", 0)
 	}

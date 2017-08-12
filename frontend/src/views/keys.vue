@@ -156,7 +156,7 @@
                     <br/>
                     <Button style="margin-left:3px;" type="ghost" @click="exportMoal = true" v-if="showMutilFuncBtn">export</Button>
                     <Button style="margin-left:3px;" type="ghost" @click="delKeys" v-if="showMutilFuncBtn">delete</Button>
-                    <Button style="margin-left:3px;" type="ghost" @click="getKeys">reload</Button>
+                    <Button style="margin-left:3px;" type="ghost" @click="reloadKeys">reload</Button>
                     <Modal
                         title="Export keys 2 mongodb"
                         v-model="exportMoal"
@@ -284,9 +284,16 @@
             serverdb (){
                 this.initKeys();                
                 this.getKeys();                
+            },
+            keys(){
+                this.checkAllGroup = [];
             }
         },
         methods: {
+            reloadKeys(){
+                this.initKeys();
+                this.getKeys();
+            },
             initKeys(){
                 this.keys = [];
                 this.keysIter = false;
@@ -303,7 +310,12 @@
             delKeys(){
                 var info = this.getReqInfo();
                 info.data = this.checkAllGroup;
-                this.$socket.emit("DelKeys", info)
+                this.$Modal.confirm({
+                    content: '<p>Sure delete these keys :<br/>'+info.data.join('<br/>')+'<br/>? This could not be recoverd</p>',
+                    onOk: () => {
+                        this.$socket.emit("DelKeys", info)
+                    }
+                });
             },
             export2mongodb(){                
                 var info = this.getReqInfo();
@@ -348,7 +360,7 @@
                 info.data.iter = parseInt( this.keysIter );
                 this.$socket.emit("ScanKeys", info)
                 this.$socket.emit("GetTotalKeysNums", info); 
-            }, 200),
+            }, 500),
             handleAddList () {
                 this.newItem.listVal.push('');
             },
