@@ -129,7 +129,9 @@ func checkOperData(conn *gosocketio.Channel, data interface{}) (operData, bool) 
 
 // sendCmd
 func sendCmd(conn *gosocketio.Channel, cmd string) {
-	conn.Emit("cmdLog", cmd)
+	if conn != nil {
+		conn.Emit("cmdLog", cmd)
+	}
 }
 
 // sendRedisErr
@@ -137,7 +139,9 @@ func sendCmdError(conn *gosocketio.Channel, cmd string) {
 	if isDebug {
 		logErr(errors.New(cmd))
 	}
-	conn.Emit("cmdErr", cmd)
+	if conn != nil {
+		conn.Emit("cmdErr", cmd)
+	}
 }
 
 // sendRedisReceive
@@ -166,7 +170,9 @@ func sendCmdReceive(conn *gosocketio.Channel, data interface{}) {
 	default:
 		info = "Unknown: " + k.String()
 	}
-	conn.Emit("cmdReceive", "Receive: "+info)
+	if conn != nil {
+		conn.Emit("cmdReceive", "Receive: "+info)
+	}
 }
 
 func checkRedisValue(conn *gosocketio.Channel, data interface{}) (c redis.Conn, _redisValue redisValue, b bool) {

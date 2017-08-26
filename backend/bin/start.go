@@ -149,6 +149,22 @@ func main() {
 		backend.DelExportTask(c, data)
 	})
 
+	server.On("DelKeysBg", func(c *gosocketio.Channel, data interface{}) {
+		c.Emit("loading", 0)
+		defer c.Emit("loadingComplete", 0)
+		backend.DelKeysBg(c, data)
+	})
+
+	server.On("GetDelTasksProcess", func(c *gosocketio.Channel, data interface{}) {
+		backend.GetDelTasksProcess(c, data)
+	})
+
+	server.On("DelDeleteTask", func(c *gosocketio.Channel, data int) {
+		c.Emit("loading", 0)
+		defer c.Emit("loadingComplete", 0)
+		backend.DelDeleteTask(c, data)
+	})
+
 	http.HandleFunc("/socket.io/", func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		w.Header().Set("Access-Control-Allow-Origin", origin)

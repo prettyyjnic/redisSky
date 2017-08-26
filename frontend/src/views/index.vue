@@ -83,6 +83,10 @@
                             <Icon type="ios-refresh-empty"></Icon>
                             <span class="layout-text" ><router-link to='/export/process'>export process</router-link></span>
                         </Menu-item>
+                        <Menu-item name="del">
+                            <Icon type="ios-refresh-empty"></Icon>
+                            <span class="layout-text" ><router-link to='/del/process'>del process</router-link></span>
+                        </Menu-item>
                     </Menu-group>
 
                     <Menu-group title="Servers">
@@ -174,7 +178,7 @@
             events:{
                 cmdLog(data){
                     this.console.unshift('Log:' + data);
-                    this.console.slice(0, 1000);
+                    this.console.slice(0, 100);
                 },
                 cmdErr(data){
                     this.$Notice.error({
@@ -184,7 +188,7 @@
                 },
                 cmdReceive(data){
                     this.console.unshift(data);
-                    this.console.slice(0, 1000);
+                    this.console.slice(0, 100);
                 },
             }
         }

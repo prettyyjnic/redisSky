@@ -427,9 +427,10 @@ import Vue from 'vue';
                 var indentChar = '    ';     
                 if(/^\s*$/.test(txt)){
                     return '';     
-                }     
+                }
+                if (txt.indexOf('[') !== 0 && txt.indexOf('{') !== 0) {return txt;}
                 try{var data=eval('('+txt+')');}     
-                catch(e){     
+                catch(e){
                     return txt;     
                 };     
                 var draw=[],last=false,This=this,line=compress?'':'\n',nodeCount=0,maxDepth=0;     

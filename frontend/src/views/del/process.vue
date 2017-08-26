@@ -11,7 +11,7 @@
         <Col v-else span="11" v-for="item in tasks" style="margin:5px;">
             <div>
                 <Tooltip placement="bottom-start">                    
-                    任务：{{item.task}}
+                    任务：{{item.id}}
                     <div slot="content">
                         <p v-for="key in item.keys"><i>{{key}}</i></p>
                     </div>
@@ -45,7 +45,7 @@
             // 此时 data 已经被 observed 了
             var that = this;
             this.timer = setInterval(function(){
-                that.$socket.emit("GetExportTasksProcess", []);
+                that.$socket.emit("GetDelTasksProcess", []);
             }, 1000)
         },
         watch: {
@@ -56,14 +56,14 @@
                 this.$Modal.confirm({
                     content: '<p>Sure delete this task ? This could not be recoverd</p>',
                     onOk: () => {
-                        this.$socket.emit("DelExportTask", taskId)
+                        this.$socket.emit("DelDeleteTask", taskId)
                     }
                 });
             }
         }
         ,socket:{
             events:{
-                ShowExportTaskProcess(tasks){
+                ShowDelTaskProcess(tasks){
                     if (tasks !=null) {
                         for (var i = tasks.length - 1; i >= 0; i--) {
                             tasks[i].process = tasks[i].process * 100;

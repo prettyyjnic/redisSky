@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 
@@ -11,8 +12,183 @@ import (
 	gosocketio "github.com/graarh/golang-socketio"
 )
 
+var delKeysSet map[string]interface{}
+var delKeysStorage []*delKeysStruct
+var maxDelID int
+
+type delKeysStruct struct {
+	redisIns   *redis.Conn
+	ID         int      `json:"id"`
+	Keys       []string `json:"keys"`
+	Process    float32  `json:"process"`
+	ErrMsg     string   `json:"errMsg"`
+	IsComplete bool     `json:"isComplete"`
+}
+
+func (task *delKeysStruct) calProcess(currentKeyLen, currentKeyTotal int) {
+	if isDebug {
+		log.Println("calProcess", currentKeyLen, currentKeyTotal, len(task.Keys))
+	}
+	task.Process += float32(currentKeyLen) / float32(currentKeyTotal) / float32(len(task.Keys))
+	if isDebug {
+		log.Println("calProcess", task.Process)
+	}
+}
+func (task *delKeysStruct) run() {
+	go func() {
+		c := *task.redisIns
+		defer func() {
+			task.IsComplete = true
+			c.Close()
+		}()
+		for index := 0; index < len(task.Keys); index++ {
+			key := task.Keys[index]
+			t, err := keyType(nil, c, key)
+			if err != nil {
+				task.Process = 0
+				task.ErrMsg = err.Error()
+				return
+			}
+			switch t {
+			case "none":
+				task.Process = 0
+				task.ErrMsg = err.Error()
+				return
+			case "string":
+				delKey(nil, c, key)
+				task.calProcess(1, 1)
+			case "list":
+				var limits = int64(_globalConfigs.System.DelRowLimits)
+				if sizes, ok := checkBigKey(nil, c, key, "list"); ok {
+					// else use ltrim
+					for end := sizes - 1; end >= 0; end = end - limits {
+						start := end - limits
+						if start < 0 {
+							start = 0
+						}
+						_, err := c.Do("LTRIM", key, start, end)
+						if err != nil {
+							task.Process = 0
+							task.ErrMsg = err.Error()
+							return
+						}
+						task.calProcess(int(end-start), int(sizes))
+					}
+				} else {
+					task.calProcess(1, 1)
+				}
+
+			case "hash", "set", "zset":
+				// var limits = int64(_globalConfigs.System.DelRowLimits)
+				if _, ok := checkBigKey(nil, c, key, t); ok {
+					var delMethod string
+					var lenMethod string
+					var _scanType scanType
+					switch t {
+					case "hash":
+						_scanType = hashScan
+						delMethod = "HDEL"
+						lenMethod = "HLEN"
+					case "set":
+						_scanType = setScan
+						delMethod = "SREM"
+						lenMethod = "SCARD"
+					case "zset":
+						_scanType = zsetScan
+						lenMethod = "ZCARD"
+						delMethod = "ZREM"
+					}
+					var iterater int64
+					var sizes int
+					var err error
+					sizes, err = redis.Int(c.Do(lenMethod, key))
+					if err != nil {
+						task.Process = 0
+						task.ErrMsg = err.Error()
+						return
+					}
+					for {
+						iterater, fields := scan(nil, c, key, "", _scanType, iterater, _globalConfigs.System.RowScanLimits)
+						if fields == nil {
+							task.Process = 0
+							task.ErrMsg = "scan key " + key + " return nil"
+							return
+						}
+						slice := make([]interface{}, 0, _globalConfigs.System.RowScanLimits)
+						slice = append(slice, key)
+						for i := 0; i < len(fields); i = i + 2 {
+							slice = append(slice, fields[i])
+						}
+						_, err = redis.Int64(c.Do(delMethod, slice...))
+						slice = nil
+						if err != nil {
+							task.Process = 0
+							task.ErrMsg = err.Error()
+							return
+						}
+						task.calProcess(len(fields), sizes)
+						if iterater == 0 {
+							break
+						}
+					}
+
+				} else {
+					task.calProcess(1, 1)
+				}
+			} // switch end
+		} // for end
+		task.Process = 1
+	}()
+}
+
+func init() {
+	delKeysSet = make(map[string]interface{})
+	delKeysStorage = make([]*delKeysStruct, 0, 10)
+}
+
 // DelKeys del mutil key
 func DelKeys(conn *gosocketio.Channel, data interface{}) {
+	if operData, ok := checkOperData(conn, data); ok {
+		data, ok := (operData.Data).([]interface{})
+		if !ok {
+			sendCmdError(conn, "data should be array of strings")
+			return
+		}
+		if len(data) <= 0 {
+			sendCmdError(conn, "keys could not be empty")
+			return
+		}
+		var keys []string
+		for i := 0; i < len(data); i++ {
+			if key, ok := data[i].(string); ok {
+				if _, exists := delKeysSet[key]; exists {
+					sendCmdError(conn, "key "+key+" is in del queue")
+					return
+				}
+				keys = append(keys, key)
+			} else {
+				sendCmdError(conn, "data should be array of strings")
+				return
+			}
+		}
+		c, err := getRedisClient(operData.ServerID, operData.DB)
+		if err != nil {
+			sendCmdError(conn, "getRedisError"+err.Error())
+			return
+		}
+		defer c.Close()
+		for i := 0; i < len(keys); i++ {
+			if !del(conn, c, keys[i]) {
+				return
+			}
+		}
+		conn.Emit("tip", &info{"success", "del success!", 2})
+		conn.Emit("ReloadKeys", 0)
+	}
+}
+
+// DelKeysBg del mutil key in background
+func DelKeysBg(conn *gosocketio.Channel, data interface{}) {
 	if operData, ok := checkOperData(conn, data); ok {
 		data, ok := (operData.Data).([]interface{})
 		if !ok {
@@ -37,16 +213,37 @@ func DelKeys(conn *gosocketio.Channel, data interface{}) {
 			sendCmdError(conn, "getRedisError"+err.Error())
 			return
 		}
-		defer c.Close()
-		for i := 0; i < len(keys); i++ {
-			if !del(conn, c, keys[i]) {
+		maxDelID++
+		task := &delKeysStruct{
+			redisIns:   &c,
+			Keys:       keys,
+			ID:         maxDelID,
+			IsComplete: false,
+		}
+		delKeysStorage = append(delKeysStorage, task)
+		task.run()
+		conn.Emit("AddDelTaskSuccess", 0)
+	}
+}
+
+// GetDelTasksProcess get process of all tasks
+func GetDelTasksProcess(conn *gosocketio.Channel, data interface{}) {
+	conn.Emit("ShowDelTaskProcess", delKeysStorage)
+}
+
+// DelDeleteTask get process of all tasks
+func DelDeleteTask(conn *gosocketio.Channel, id int) {
+	for i := 0; i < len(delKeysStorage); i++ {
+		if delKeysStorage[i].ID == id {
+			if delKeysStorage[i].IsComplete == false {
+				sendCmdError(conn, "del error, the task is not completed !")
 				return
 			}
+			delKeysStorage = append(delKeysStorage[:i], delKeysStorage[i+1:]...)
+			break
 		}
-
-		conn.Emit("tip", &info{"success", "del success!", 2})
-		conn.Emit("ReloadKeys", 0)
 	}
+	conn.Emit("tip", &info{"success", "del success!", 2})
 }
 
 func del(conn *gosocketio.Channel, c redis.Conn, key string) bool {

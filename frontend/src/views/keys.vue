@@ -207,9 +207,15 @@
         </Col>
         <Modal
             v-model="exportSuccessModal"
-            @on-ok="exportPorcess"
+            @on-ok="exportProcess"
             class-name="vertical-center-modal">
             <p>导出任务正在后台进行，点击确定查看进度！</p>
+        </Modal>
+        <Modal
+            v-model="delSuccessModal"
+            @on-ok="delProcess"
+            class-name="vertical-center-modal">
+            <p>删除任务正在后台进行，点击确定查看进度！</p>
         </Modal>
     </Row>
     
@@ -231,6 +237,7 @@
                 },
                 loadingMore: true,
                 exportSuccessModal: false,
+                delSuccessModal: false,
                 exportMoal: false,
                 indeterminate: true,
                 checkAll: false,
@@ -304,16 +311,19 @@
                 info.db = parseInt( this.serverdb );
                 return info;
             },
-            exportPorcess(){
+            exportProcess(){
                 this.$router.push("/export/process");
+            },
+            delProcess(){
+                this.$router.push("/del/process");
             },
             delKeys(){
                 var info = this.getReqInfo();
                 info.data = this.checkAllGroup;
                 this.$Modal.confirm({
-                    content: '<p>Sure delete these keys :<br/>'+info.data.join('<br/>')+'<br/>? This could not be recoverd</p>',
+                    content: '<p>Sure delete these keys :<br/>'+info.data.join('<br/>')+'<br/> This could not be recoverd</p>',
                     onOk: () => {
-                        this.$socket.emit("DelKeys", info)
+                        this.$socket.emit("DelKeysBg", info)
                     }
                 });
             },
@@ -440,6 +450,9 @@
                 },
                 AddExportTaskSuccess(){
                     this.exportSuccessModal = true;
+                },
+                AddDelTaskSuccess(){
+                    this.delSuccessModal = true;
                 }
             }
         }
