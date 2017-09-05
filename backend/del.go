@@ -50,10 +50,8 @@ func (task *delKeysStruct) run() {
 				return
 			}
 			switch t {
-			case "none":
-				task.Process = 0
-				task.ErrMsg = err.Error()
-				return
+			case "none": // 跳过不存在的key
+				continue
 			case "string":
 				delKey(nil, c, key)
 				task.calProcess(1, 1)
