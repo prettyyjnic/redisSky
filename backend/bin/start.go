@@ -176,7 +176,7 @@ func main() {
 	dir := "../../frontend"
 	http.Handle("/", http.FileServer(http.Dir(dir)))
 
-	log.Println("Serving at localhost:80...")
-	log.Fatal(http.ListenAndServe(":80", nil))
+	log.Println("Serving at localhost:8089...")
+	log.Fatal(http.ListenAndServe(":8089", nil))
 
 }
