@@ -5,10 +5,6 @@ redis web 管理工具, 参考 redisMaster, 该项目主要是因为使用 redis
 - 前端使用 iview + socket.io
 - 后端使用 golang + socket.io
 
-## Demo 地址(使用免费的阿里云ECS)：
-` 帮你打广告了，请给我 5 毛广告费`
-> http://59.110.239.205:8089
-
 ## 联系邮箱：
 prettyyjnic@qq.com
 
