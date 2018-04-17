@@ -72,10 +72,10 @@ func (task *delKeysStruct) run() {
 						}
 						task.calProcess(int(end-start), int(sizes))
 					}
+					delKey(nil, c, key)
 				} else {
 					task.calProcess(1, 1)
 				}
-
 			case "hash", "set", "zset":
 				// var limits = int64(_globalConfigs.System.DelRowLimits)
 				if _, ok := checkBigKey(nil, c, key, t); ok {
@@ -129,12 +129,13 @@ func (task *delKeysStruct) run() {
 							break
 						}
 					}
-
+					delKey(nil, c, key)
 				} else {
 					task.calProcess(1, 1)
 				}
 			} // switch end
 		} // for end
+
 		task.Process = 1
 	}()
 }

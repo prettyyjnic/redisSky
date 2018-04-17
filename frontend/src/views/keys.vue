@@ -284,10 +284,10 @@
         watch: {
             '$route': 'reload',
             // 如果 question 发生改变，这个函数就会运行
-            inputKey () {
-                this.initKeys();
-                this.getKeys();
-            },
+            // inputKey () {
+            //     this.initKeys();
+            //     this.getKeys();
+            // },
             serverdb (){
                 this.initKeys();                
                 this.getKeys();                
