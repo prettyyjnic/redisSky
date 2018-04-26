@@ -9,7 +9,8 @@ import (
 	"strings"
 
 	"github.com/garyburd/redigo/redis"
-	gosocketio "github.com/graarh/golang-socketio"
+	"github.com/graarh/golang-socketio"
+	"time"
 )
 
 var delKeysSet map[string]interface{}
@@ -17,13 +18,15 @@ var delKeysStorage []*delKeysStruct
 var maxDelID int
 
 type delKeysStruct struct {
-	redisIns   *redis.Conn
-	ID         int      `json:"id"`
-	Keys       []string `json:"keys"`
-	Process    float32  `json:"process"`
-	ErrMsg     string   `json:"errMsg"`
-	IsComplete bool     `json:"isComplete"`
-	HadTryTimes int `json:"had_try_times"`
+	redisIns    *redis.Conn
+	ID          int      `json:"id"`
+	Keys        []string `json:"keys"`
+	Process     float32  `json:"process"`
+	ErrMsg      string   `json:"errMsg"`
+	IsComplete  bool     `json:"isComplete"`
+	HadTryTimes int      `json:"had_try_times"`
+	ServerId    int      `json:"server_id"`
+	DB          int      `json:"db"`
 }
 
 func (task *delKeysStruct) calProcess(currentKeyLen, currentKeyTotal int) {
@@ -39,15 +42,27 @@ func (task *delKeysStruct) run() {
 	go func() {
 		c := *task.redisIns
 		defer func() {
-			if task.ErrMsg != "" && task.HadTryTimes < 3 {// 重试
+			task.HadTryTimes ++
+			if task.ErrMsg != "" && task.HadTryTimes < 3 { // 重试
+				time.Sleep(time.Second*1)
 				task.ErrMsg = ""
 				task.run()
-			}else{
+			} else {
 				task.IsComplete = true
 				c.Close()
 			}
 		}()
-		task.HadTryTimes ++
+		var err error
+		if c.Err() != nil {
+			c.Close()
+			c, err = getRedisClient(task.ServerId, task.DB)
+			if err != nil {
+				log.Println("connect to redis error", err.Error())
+				return
+			}
+			task.redisIns = &c
+		}
+
 		for index := 0; index < len(task.Keys); index++ {
 			key := task.Keys[index]
 			t, err := keyType(nil, c, key)
@@ -221,6 +236,8 @@ func DelKeysBg(conn *gosocketio.Channel, data interface{}) {
 		}
 		maxDelID++
 		task := &delKeysStruct{
+			ServerId:   operData.ServerID,
+			DB:         operData.DB,
 			redisIns:   &c,
 			Keys:       keys,
 			ID:         maxDelID,
