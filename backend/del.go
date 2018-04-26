@@ -23,6 +23,7 @@ type delKeysStruct struct {
 	Process    float32  `json:"process"`
 	ErrMsg     string   `json:"errMsg"`
 	IsComplete bool     `json:"isComplete"`
+	HadTryTimes int `json:"had_try_times"`
 }
 
 func (task *delKeysStruct) calProcess(currentKeyLen, currentKeyTotal int) {
@@ -38,9 +39,15 @@ func (task *delKeysStruct) run() {
 	go func() {
 		c := *task.redisIns
 		defer func() {
-			task.IsComplete = true
-			c.Close()
+			if task.ErrMsg != "" && task.HadTryTimes < 3 {// 重试
+				task.ErrMsg = ""
+				task.run()
+			}else{
+				task.IsComplete = true
+				c.Close()
+			}
 		}()
+		task.HadTryTimes ++
 		for index := 0; index < len(task.Keys); index++ {
 			key := task.Keys[index]
 			t, err := keyType(nil, c, key)
