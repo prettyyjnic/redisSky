@@ -48,14 +48,6 @@
     .ivu-col{
         transition: width .2s ease-in-out;
     }
-    .console{
-        border: 1px solid #57a3f3;
-        position: absolute;
-        right: 0;
-        bottom: 0;
-        min-width: 200px;
-        max-width: 600px;
-    }
     .overflow-y-show{
         overflow-y: auto;
         max-height: 400px;
@@ -115,21 +107,7 @@
                 </div>
             </i-col>
         </Row>
-
-        <div class="console">
-            <Collapse>
-                <Panel>
-                    console
-                    <div class="overflow-y-show" slot="content">
-                        <span :style="{'display': console.length < 10 ? 'none' : 'inline-block'}" style="float:right; margin-right:10px" @click="clearConsole"><Button type="ghost">Clear</Button></span>
-                        <p v-for="item in console">{{item}}</p>
-                    </div>
-                </Panel>
-            </Collapse>
-        </div>
     </div>
-
-    
 </template>
 <script>
     export default {
@@ -137,8 +115,6 @@
             return {
                 spanLeft: 3,
                 spanRight: 21,
-                console:[]
-                // servers: {}
             }
         },
         created () {
@@ -158,9 +134,6 @@
             }
         },
         methods: {
-            test(){
-                alert(1);
-            },
             toggleClick () {
                 if (this.spanLeft === 3) {
                     this.spanLeft = 1;
@@ -169,16 +142,11 @@
                     this.spanLeft = 3;
                     this.spanRight = 21;
                 }
-            },
-            clearConsole(){
-                this.console = [];
             }
         },
         socket:{
             events:{
                 cmdLog(data){
-                    this.console.unshift('Log:' + data);
-                    this.console.slice(0, 100);
                 },
                 cmdErr(data){
                     this.$Notice.error({
@@ -187,8 +155,6 @@
                     });
                 },
                 cmdReceive(data){
-                    this.console.unshift(data);
-                    this.console.slice(0, 100);
                 },
             }
         }
