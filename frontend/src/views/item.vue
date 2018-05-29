@@ -157,8 +157,17 @@ import Vue from 'vue';
                     {
                         title: 'row',
                         ellipsis: true,
-                        type: 'index',
-                        width: '15%',
+                        type: 'index'
+                    },
+                    {
+                        key: 'field',
+                        title: 'field',
+                        ellipsis: true
+                    },
+                    {
+                        key: 'val',
+                        title: 'val',
+                        ellipsis: true,
                     }
                 ],
                 data: [],
@@ -496,8 +505,7 @@ import Vue from 'vue';
                         {
                             title: 'row',
                             ellipsis: true,
-                            type: 'index',
-                            width: '15%',
+                            type: 'index'
                         },{
                             title: 'val',
                             key: 'val',
