@@ -129,9 +129,9 @@ func checkOperData(conn *gosocketio.Channel, data interface{}) (operData, bool) 
 
 // sendCmd
 func sendCmd(conn *gosocketio.Channel, cmd string) {
-	if conn != nil {
-		conn.Emit("cmdLog", cmd)
-	}
+	// if conn != nil {
+	// 	conn.Emit("cmdLog", cmd)
+	// }
 }
 
 // sendRedisErr
@@ -146,33 +146,33 @@ func sendCmdError(conn *gosocketio.Channel, cmd string) {
 
 // sendRedisReceive
 func sendCmdReceive(conn *gosocketio.Channel, data interface{}) {
-	var info string
-	v := reflect.ValueOf(data)
-	k := v.Kind()
-	switch k {
-	case reflect.Int,
-		reflect.Int8,
-		reflect.Int16,
-		reflect.Int32,
-		reflect.Uint,
-		reflect.Uint8,
-		reflect.Uint16,
-		reflect.Uint32,
-		reflect.Uint64,
-		reflect.Int64:
-		info = strconv.FormatInt(v.Int(), 10)
-	case reflect.Float64, reflect.Float32:
-		info = strconv.FormatFloat(v.Float(), 'f', -1, 64)
-	case reflect.Array, reflect.Map, reflect.Slice:
-		info = "Array: " + strconv.Itoa(v.Len())
-	case reflect.String:
-		info = "String: " + v.String()
-	default:
-		info = "Unknown: " + k.String()
-	}
-	if conn != nil {
-		conn.Emit("cmdReceive", "Receive: "+info)
-	}
+	// var info string
+	// v := reflect.ValueOf(data)
+	// k := v.Kind()
+	// switch k {
+	// case reflect.Int,
+	// 	reflect.Int8,
+	// 	reflect.Int16,
+	// 	reflect.Int32,
+	// 	reflect.Uint,
+	// 	reflect.Uint8,
+	// 	reflect.Uint16,
+	// 	reflect.Uint32,
+	// 	reflect.Uint64,
+	// 	reflect.Int64:
+	// 	info = strconv.FormatInt(v.Int(), 10)
+	// case reflect.Float64, reflect.Float32:
+	// 	info = strconv.FormatFloat(v.Float(), 'f', -1, 64)
+	// case reflect.Array, reflect.Map, reflect.Slice:
+	// 	info = "Array: " + strconv.Itoa(v.Len())
+	// case reflect.String:
+	// 	info = "String: " + v.String()
+	// default:
+	// 	info = "Unknown: " + k.String()
+	// }
+	// if conn != nil {
+	// 	conn.Emit("cmdReceive", "Receive: "+info)
+	// }
 }
 
 func checkRedisValue(conn *gosocketio.Channel, data interface{}) (c redis.Conn, _redisValue redisValue, b bool) {
