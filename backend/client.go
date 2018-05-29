@@ -2,15 +2,9 @@ package backend
 
 import (
 	"errors"
-
 	"time"
-
 	"strconv"
-
-	"reflect"
-
 	"encoding/json"
-
 	"github.com/garyburd/redigo/redis"
 	gosocketio "github.com/graarh/golang-socketio"
 )
