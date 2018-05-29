@@ -22,3 +22,9 @@ npm install # 安装依赖
 npm run build # 前端代码编译
 cd $项目根目录/backend/bin && go run start.go # 启动服务
 ```
+
+## 使用docker file:
+```
+sudo docker build -t prettyyjnic/redis-sky .
+sudo docker run -p 8089:8089 --rm prettyyjnic/redis-sky
+```
