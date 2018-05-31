@@ -529,8 +529,7 @@ import Vue from 'vue';
                         this.columns.splice(1, 0, {
                             title: 'score',
                             key: 'score',
-                            sortable: true,
-                            width: '20%',                      
+                            sortable: true                   
                         });
                         if (redisValue.val != null){
                             redisValue.val.sort(function(a, b){
