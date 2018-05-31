@@ -44,12 +44,14 @@ func (task *delKeysStruct) run() {
 		defer func() {
 			task.HadTryTimes ++
 			if task.ErrMsg != "" && task.HadTryTimes < 3 { // 重试
-				time.Sleep(time.Second*1)
+				time.Sleep(time.Second * 1)
 				task.ErrMsg = ""
 				task.run()
 			} else {
 				task.IsComplete = true
-				c.Close()
+				if task.redisIns != nil {
+					(*task.redisIns).Close()
+				}
 			}
 		}()
 		var err error
