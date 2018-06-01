@@ -91,9 +91,8 @@ func scan(conn *gosocketio.Channel, c redis.Conn, key, field string, t scanType,
 // ScanKeys scan redis key
 func ScanKeys(conn *gosocketio.Channel, data json.RawMessage) {
 	if info, ok := checkOperData(conn, data); ok {
-		tmpBytes, _ := json.Marshal(info.Data)
 		var scanInfo scanInfoStruct
-		err := json.Unmarshal(tmpBytes, &scanInfo)
+		err := json.Unmarshal(info.Data, &scanInfo)
 		if err != nil {
 			sendCmdError(conn, "Unmarshal error: "+err.Error())
 			return
