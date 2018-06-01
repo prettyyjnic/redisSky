@@ -80,11 +80,10 @@ func QuerySystemConfigs(conn *gosocketio.Channel) {
 }
 
 // UpdateSystemConfigs 更新系统信息
-func UpdateSystemConfigs(conn *gosocketio.Channel, data interface{}) {
+func UpdateSystemConfigs(conn *gosocketio.Channel, data json.RawMessage) {
 	var _systemConf systemConf
 	var err error
-	bytes, _ := json.Marshal(data)
-	err = json.Unmarshal(bytes, &_systemConf)
+	err = json.Unmarshal(data, &_systemConf)
 	if err != nil {
 		sendCmdError(conn, "data sould be struct of systemConf!")
 		return

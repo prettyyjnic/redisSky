@@ -44,10 +44,9 @@ func QueryServer(conn *gosocketio.Channel, serverID int) {
 }
 
 // AddServer 增加redis server
-func AddServer(conn *gosocketio.Channel, data interface{}) {
+func AddServer(conn *gosocketio.Channel, data json.RawMessage) {
 	var server redisServer
-	_bytes, _ := json.Marshal(data)
-	err := json.Unmarshal(_bytes, &server)
+	err := json.Unmarshal(data, &server)
 
 	if err != nil {
 		sendCmdError(conn, "data sould be struct of redisServer !")
@@ -61,10 +60,9 @@ func AddServer(conn *gosocketio.Channel, data interface{}) {
 }
 
 // UpdateServer 更新redisServer
-func UpdateServer(conn *gosocketio.Channel, data interface{}) {
+func UpdateServer(conn *gosocketio.Channel, data json.RawMessage) {
 	var server redisServer
-	_bytes, _ := json.Marshal(data)
-	err := json.Unmarshal(_bytes, &server)
+	err := json.Unmarshal(data, &server)
 
 	if err != nil {
 		sendCmdError(conn, "data sould be struct of redisServer !")
@@ -124,7 +122,7 @@ func ServerInfo(conn *gosocketio.Channel, serverID int) {
 }
 
 // GetTotalKeysNums get total keys nums
-func GetTotalKeysNums(conn *gosocketio.Channel, data interface{}) {
+func GetTotalKeysNums(conn *gosocketio.Channel, data json.RawMessage) {
 	if data, ok := checkOperData(conn, data); ok {
 		sendCmd(conn, "INFO KEYSPACE")
 		c, err := getRedisClient(data.ServerID, data.DB)

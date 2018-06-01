@@ -89,7 +89,7 @@ func scan(conn *gosocketio.Channel, c redis.Conn, key, field string, t scanType,
 }
 
 // ScanKeys scan redis key
-func ScanKeys(conn *gosocketio.Channel, data interface{}) {
+func ScanKeys(conn *gosocketio.Channel, data json.RawMessage) {
 	if info, ok := checkOperData(conn, data); ok {
 		tmpBytes, _ := json.Marshal(info.Data)
 		var scanInfo scanInfoStruct
@@ -113,11 +113,12 @@ func ScanKeys(conn *gosocketio.Channel, data interface{}) {
 }
 
 // ScanRemote scan remote
-func ScanRemote(conn *gosocketio.Channel, data interface{}) {
+func ScanRemote(conn *gosocketio.Channel, data json.RawMessage) {
 	if c, _redisValue, ok := checkRedisValue(conn, data); ok {
 		defer c.Close()
-
 		var key = _redisValue.Key
+		var field string
+
 		field, ok := (_redisValue.Val).(string)
 		if !ok {
 			sendCmdError(conn, "val should be string")
@@ -155,7 +156,7 @@ func ScanRemote(conn *gosocketio.Channel, data interface{}) {
 }
 
 // GetKey get value of the key
-func GetKey(conn *gosocketio.Channel, data interface{}) {
+func GetKey(conn *gosocketio.Channel, data json.RawMessage) {
 	if c, _redisValue, ok := checkRedisValue(conn, data); ok {
 		defer c.Close()
 		// type, ttl, data
@@ -302,7 +303,7 @@ func formatZset(datas []string) []map[string]interface{} {
 }
 
 // SetTTL set ttl
-func SetTTL(conn *gosocketio.Channel, data interface{}) {
+func SetTTL(conn *gosocketio.Channel, data json.RawMessage) {
 	if c, _redisValue, ok := checkRedisValue(conn, data); ok {
 		defer c.Close()
 		cmd := "EXPIRE " + _redisValue.Key + " " + strconv.FormatInt(_redisValue.TTL, 10)
@@ -320,7 +321,7 @@ func SetTTL(conn *gosocketio.Channel, data interface{}) {
 }
 
 // KeyType type of the key
-func KeyType(conn *gosocketio.Channel, data interface{}) {
+func KeyType(conn *gosocketio.Channel, data json.RawMessage) {
 	if c, _redisValue, ok := checkRedisValue(conn, data); ok {
 		defer c.Close()
 		s, err := keyType(conn, c, _redisValue.Key)
@@ -331,22 +332,28 @@ func KeyType(conn *gosocketio.Channel, data interface{}) {
 }
 
 // Rename rename a key
-func Rename(conn *gosocketio.Channel, data interface{}) {
+func Rename(conn *gosocketio.Channel, data json.RawMessage) {
 	if c, _redisValue, ok := checkRedisValue(conn, data); ok {
 		defer c.Close()
-		newKey, ok := (_redisValue.Val).(string)
-		if !ok {
-			sendCmdError(conn, "data should be string of the new key")
+		var newKey string
+		newKey, ok = _redisValue.Val.(string)
+		if !ok || newKey == "" {
+			sendCmdError(conn, "key must be string")
 			return
 		}
+		if newKey == "" {
+			sendCmdError(conn, "new key can not be empty!")
+			return
+		}
+		var err error
 		cmd := "RENAME " + _redisValue.Key + " " + newKey
 		sendCmd(conn, cmd)
-		_, err := c.Do("RENAME", _redisValue.Key, newKey)
+		_, err = c.Do("RENAME", _redisValue.Key, newKey)
 		if err != nil {
 			sendCmdError(conn, "redis error: "+err.Error())
 			return
 		}
-		conn.Emit("ReloadName", newKey)
+		conn.Emit("ReNameSuccess", newKey)
 		conn.Emit("tip", &info{"success", "rename success!", 2})
 	}
 }

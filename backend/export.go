@@ -393,7 +393,7 @@ func (task *mongoExportStruct) run() {
 }
 
 //Export2mongodb export keys to mongodb
-func Export2mongodb(conn *gosocketio.Channel, data interface{}) {
+func Export2mongodb(conn *gosocketio.Channel, data json.RawMessage) {
 	if operdata, ok := checkOperData(conn, data); ok {
 		dataBytes, _ := json.Marshal(operdata.Data)
 		var exportInfo mongoExportStruct

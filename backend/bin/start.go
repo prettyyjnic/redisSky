@@ -7,6 +7,7 @@ import (
 	gosocketio "github.com/graarh/golang-socketio"
 	"github.com/graarh/golang-socketio/transport"
 	"github.com/prettyyjnic/redisSky/backend"
+	"encoding/json"
 )
 
 func main() {
@@ -19,7 +20,7 @@ func main() {
 		backend.QuerySystemConfigs(c)
 	})
 
-	server.On("UpdateSystemConfigs", func(c *gosocketio.Channel, data interface{}) {
+	server.On("UpdateSystemConfigs", func(c *gosocketio.Channel, data json.RawMessage) {
 		c.Emit("loading", 0)
 		defer c.Emit("loadingComplete", 0)
 		backend.UpdateSystemConfigs(c, data)
@@ -43,79 +44,73 @@ func main() {
 		backend.DelServer(c, serverID)
 	})
 
-	server.On("UpdateServer", func(c *gosocketio.Channel, data interface{}) {
+	server.On("UpdateServer", func(c *gosocketio.Channel, data json.RawMessage) {
 		c.Emit("loading", 0)
 		defer c.Emit("loadingComplete", 0)
 		backend.UpdateServer(c, data)
 	})
 
-	server.On("AddServer", func(c *gosocketio.Channel, data interface{}) {
+	server.On("AddServer", func(c *gosocketio.Channel, data json.RawMessage) {
 		c.Emit("loading", 0)
 		defer c.Emit("loadingComplete", 0)
 		backend.AddServer(c, data)
 	})
 
-	server.On("ScanKeys", func(c *gosocketio.Channel, data interface{}) {
+	server.On("ScanKeys", func(c *gosocketio.Channel, data json.RawMessage) {
 		c.Emit("loading", 0)
 		defer c.Emit("loadingComplete", 0)
 		backend.ScanKeys(c, data)
 	})
 
-	server.On("GetKey", func(c *gosocketio.Channel, data interface{}) {
+	server.On("GetKey", func(c *gosocketio.Channel, data json.RawMessage) {
 		c.Emit("loading", 0)
 		defer c.Emit("loadingComplete", 0)
 		backend.GetKey(c, data)
 	})
 
-	server.On("SetTTL", func(c *gosocketio.Channel, data interface{}) {
+	server.On("SetTTL", func(c *gosocketio.Channel, data json.RawMessage) {
 		c.Emit("loading", 0)
 		defer c.Emit("loadingComplete", 0)
 		backend.SetTTL(c, data)
 	})
 
-	server.On("Rename", func(c *gosocketio.Channel, data interface{}) {
+	server.On("Rename", func(c *gosocketio.Channel, data json.RawMessage) {
 		c.Emit("loading", 0)
 		defer c.Emit("loadingComplete", 0)
 		backend.Rename(c, data)
 	})
 
-	server.On("DelKeys", func(c *gosocketio.Channel, data interface{}) {
-		c.Emit("loading", 0)
-		defer c.Emit("loadingComplete", 0)
-		backend.DelKeys(c, data)
-	})
-
-	server.On("DelKey", func(c *gosocketio.Channel, data interface{}) {
+	server.On("DelKey", func(c *gosocketio.Channel, data json.RawMessage) {
 		c.Emit("loading", 0)
 		defer c.Emit("loadingComplete", 0)
 		backend.DelKey(c, data)
 	})
 
-	server.On("AddRow", func(c *gosocketio.Channel, data interface{}) {
+	server.On("AddRow", func(c *gosocketio.Channel, data json.RawMessage) {
 		c.Emit("loading", 0)
 		defer c.Emit("loadingComplete", 0)
 		backend.AddRow(c, data)
 	})
 
-	server.On("DelRow", func(c *gosocketio.Channel, data interface{}) {
+	server.On("DelRow", func(c *gosocketio.Channel, data json.RawMessage) {
 		c.Emit("loading", 0)
 		defer c.Emit("loadingComplete", 0)
 		backend.DelRow(c, data)
 	})
 
-	server.On("ModifyKey", func(c *gosocketio.Channel, data interface{}) {
+	server.On("ModifyKey", func(c *gosocketio.Channel, data json.RawMessage) {
 		c.Emit("loading", 0)
 		defer c.Emit("loadingComplete", 0)
 		backend.ModifyKey(c, data)
 	})
 
-	server.On("AddKey", func(c *gosocketio.Channel, data interface{}) {
+	server.On("AddKey", func(c *gosocketio.Channel, data json.RawMessage) {
 		c.Emit("loading", 0)
 		defer c.Emit("loadingComplete", 0)
 		backend.AddKey(c, data)
 	})
 
-	server.On("ScanRemote", func(c *gosocketio.Channel, data interface{}) {
+	server.On("ScanRemote", func(c *gosocketio.Channel, data json.RawMessage) {
 		c.Emit("loading", 0)
 		defer c.Emit("loadingComplete", 0)
 		backend.ScanRemote(c, data)
@@ -127,13 +122,13 @@ func main() {
 		backend.ServerInfo(c, serverID)
 	})
 
-	server.On("GetTotalKeysNums", func(c *gosocketio.Channel, data interface{}) {
+	server.On("GetTotalKeysNums", func(c *gosocketio.Channel, data json.RawMessage) {
 		c.Emit("loading", 0)
 		defer c.Emit("loadingComplete", 0)
 		backend.GetTotalKeysNums(c, data)
 	})
 
-	server.On("Export2mongodb", func(c *gosocketio.Channel, data interface{}) {
+	server.On("Export2mongodb", func(c *gosocketio.Channel, data json.RawMessage) {
 		c.Emit("loading", 0)
 		defer c.Emit("loadingComplete", 0)
 		backend.Export2mongodb(c, data)
@@ -149,7 +144,7 @@ func main() {
 		backend.DelExportTask(c, data)
 	})
 
-	server.On("DelKeysBg", func(c *gosocketio.Channel, data interface{}) {
+	server.On("DelKeysBg", func(c *gosocketio.Channel, data json.RawMessage) {
 		c.Emit("loading", 0)
 		defer c.Emit("loadingComplete", 0)
 		backend.DelKeysBg(c, data)

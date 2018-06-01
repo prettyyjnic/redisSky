@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"encoding/json"
 	"github.com/garyburd/redigo/redis"
-	gosocketio "github.com/graarh/golang-socketio"
+	"github.com/graarh/golang-socketio"
 )
 
 var redisClients map[int]*redis.Pool
@@ -24,9 +24,9 @@ const (
 
 // operData 操作协议
 type operData struct {
-	DB       int         `json:"db"`
-	ServerID int         `json:"serverid"`
-	Data     interface{} `json:"data"`
+	DB       int             `json:"db"`
+	ServerID int             `json:"serverid"`
+	Data     json.RawMessage `json:"data"`
 }
 
 type dataStruct struct {
@@ -104,16 +104,10 @@ func closeClient(serverID int) error {
 }
 
 // checkOperData 检查协议
-func checkOperData(conn *gosocketio.Channel, data interface{}) (operData, bool) {
+func checkOperData(conn *gosocketio.Channel, data json.RawMessage) (operData, bool) {
 	var info operData
 	var err error
-	var bytes []byte
-	bytes, err = json.Marshal(data)
-	if err != nil {
-		sendCmdError(conn, err.Error())
-		return info, false
-	}
-	err = json.Unmarshal(bytes, &info)
+	err = json.Unmarshal(data, &info)
 	if err != nil {
 		sendCmdError(conn, err.Error())
 		return info, false
@@ -169,11 +163,11 @@ func sendCmdReceive(conn *gosocketio.Channel, data interface{}) {
 	// }
 }
 
-func checkRedisValue(conn *gosocketio.Channel, data interface{}) (c redis.Conn, _redisValue redisValue, b bool) {
+func checkRedisValue(conn *gosocketio.Channel, data json.RawMessage) (c redis.Conn, _redisValue redisValue, b bool) {
 	if info, ok := checkOperData(conn, data); ok {
-		bytes, _ := json.Marshal(info.Data)
-		var err error
-		err = json.Unmarshal(bytes, &_redisValue)
+		//bytes, _ := json.Marshal(info.Data)
+		//var err error
+		err := json.Unmarshal(info.Data, &_redisValue)
 		if err != nil {
 			sendCmdError(conn, "Unmarshal error "+err.Error())
 			return c, _redisValue, false

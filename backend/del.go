@@ -13,7 +13,6 @@ import (
 	"time"
 )
 
-var delKeysSet map[string]interface{}
 var delKeysStorage []*delKeysStruct
 var maxDelID int
 
@@ -165,72 +164,24 @@ func (task *delKeysStruct) run() {
 }
 
 func init() {
-	delKeysSet = make(map[string]interface{})
+
 	delKeysStorage = make([]*delKeysStruct, 0, 10)
 }
 
-// DelKeys del mutil key
-func DelKeys(conn *gosocketio.Channel, data interface{}) {
-	if operData, ok := checkOperData(conn, data); ok {
-		data, ok := (operData.Data).([]interface{})
-		if !ok {
-			sendCmdError(conn, "data should be array of strings")
-			return
-		}
-		if len(data) <= 0 {
-			sendCmdError(conn, "keys could not be empty")
-			return
-		}
-		var keys []string
-		for i := 0; i < len(data); i++ {
-			if key, ok := data[i].(string); ok {
-				if _, exists := delKeysSet[key]; exists {
-					sendCmdError(conn, "key "+key+" is in del queue")
-					return
-				}
-				keys = append(keys, key)
-			} else {
-				sendCmdError(conn, "data should be array of strings")
-				return
-			}
-		}
-		c, err := getRedisClient(operData.ServerID, operData.DB)
-		if err != nil {
-			sendCmdError(conn, "getRedisError"+err.Error())
-			return
-		}
-		defer c.Close()
-		for i := 0; i < len(keys); i++ {
-			if !del(conn, c, keys[i]) {
-				return
-			}
-		}
-		conn.Emit("tip", &info{"success", "del success!", 2})
-		conn.Emit("ReloadKeys", 0)
-	}
-}
-
 // DelKeysBg del mutil key in background
-func DelKeysBg(conn *gosocketio.Channel, data interface{}) {
+func DelKeysBg(conn *gosocketio.Channel, data json.RawMessage) {
 	if operData, ok := checkOperData(conn, data); ok {
-		data, ok := (operData.Data).([]interface{})
-		if !ok {
-			sendCmdError(conn, "data should be array of strings")
+		var keys []string
+		err := json.Unmarshal(operData.Data, &keys)
+		if err != nil {
+			sendCmdError(conn, err.Error())
 			return
 		}
-		if len(data) <= 0 {
+		if len(keys) <= 0 {
 			sendCmdError(conn, "keys could not be empty")
 			return
 		}
-		var keys []string
-		for i := 0; i < len(data); i++ {
-			if key, ok := data[i].(string); ok {
-				keys = append(keys, key)
-			} else {
-				sendCmdError(conn, "data should be array of strings")
-				return
-			}
-		}
+
 		c, err := getRedisClient(operData.ServerID, operData.DB)
 		if err != nil {
 			sendCmdError(conn, "getRedisError"+err.Error())
@@ -347,7 +298,7 @@ func del(conn *gosocketio.Channel, c redis.Conn, key string) bool {
 }
 
 // DelKey del one key
-func DelKey(conn *gosocketio.Channel, data interface{}) {
+func DelKey(conn *gosocketio.Channel, data json.RawMessage) {
 	if c, _redisValue, ok := checkRedisValue(conn, data); ok {
 		defer c.Close()
 		var key = _redisValue.Key
@@ -481,7 +432,7 @@ func hdel(conn *gosocketio.Channel, c redis.Conn, key, field string) {
 }
 
 // DelRow del one row
-func DelRow(conn *gosocketio.Channel, data interface{}) {
+func DelRow(conn *gosocketio.Channel, data json.RawMessage) {
 	if c, _redisValue, ok := checkRedisValue(conn, data); ok {
 		defer c.Close()
 		var key = _redisValue.Key
@@ -550,7 +501,7 @@ func DelRow(conn *gosocketio.Channel, data interface{}) {
 				}
 			}
 
-			conn.Emit("DelRow", 0)
+			conn.Emit("ReloadValue", 0)
 		}
 	}
 }

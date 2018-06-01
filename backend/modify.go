@@ -22,7 +22,7 @@ func lrange(conn *gosocketio.Channel, c redis.Conn, key string, start int, end i
 }
 
 // ModifyKey modify one key
-func ModifyKey(conn *gosocketio.Channel, data interface{}) {
+func ModifyKey(conn *gosocketio.Channel, data json.RawMessage) {
 	if c, _redisValue, ok := checkRedisValue(conn, data); ok {
 		defer c.Close()
 		var key = _redisValue.Key

@@ -483,8 +483,8 @@ import Vue from 'vue';
                         this.scanRemote();
                     }
                 },
-                ReloadName(newKey){
-                    this.$route.params.key = this.key = newKey;
+                ReNameSuccess(newKey){
+                    this.$router.push("/serverid/"+parseInt(this.server.id)+"/db/"+parseInt(this.server.db)+"/key/"+newKey)
                 },
                 ReloadDatas(vals){
                     this.data = vals;                    
@@ -545,9 +545,6 @@ import Vue from 'vue';
                             this.data = redisValue.val;
                     }
                     
-                },
-                DelRow(){
-                    this.scanRemote();
                 }
             }
         }

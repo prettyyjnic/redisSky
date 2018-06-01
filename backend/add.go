@@ -11,7 +11,7 @@ import (
 )
 
 // AddKey save to redis
-func AddKey(conn *gosocketio.Channel, data interface{}) {
+func AddKey(conn *gosocketio.Channel, data json.RawMessage) {
 	if c, _redisValue, ok := checkRedisValue(conn, data); ok {
 		defer c.Close()
 		// check whether the key is exists
@@ -184,7 +184,7 @@ func hsetMulti(conn *gosocketio.Channel, c redis.Conn, _redisValue redisValue) b
 }
 
 // AddRow add one row 2 redis
-func AddRow(conn *gosocketio.Channel, data interface{}) {
+func AddRow(conn *gosocketio.Channel, data json.RawMessage) {
 	if c, _redisValue, ok := checkRedisValue(conn, data); ok {
 		defer c.Close()
 		t, err := keyType(conn, c, _redisValue.Key)
