@@ -44,7 +44,7 @@ func (task *delKeysStruct) run() {
 		defer func() {
 			task.HadTryTimes ++
 			if task.ErrMsg != "" && task.HadTryTimes < 3 { // 重试
-				time.Sleep(time.Second * 1)
+				time.Sleep(time.Second * 33)
 				task.ErrMsg = ""
 				task.run()
 			} else {
