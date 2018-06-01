@@ -44,9 +44,11 @@ func (task *delKeysStruct) run() {
 			task.HadTryTimes ++
 			if task.ErrMsg != "" && task.HadTryTimes < 3 { // 重试
 				time.Sleep(time.Second * 33)
+				log.Println("retry task ！")
 				task.ErrMsg = ""
 				task.run()
 			} else {
+				log.Println("retry task fail ！")
 				task.IsComplete = true
 				if task.redisIns != nil {
 					(*task.redisIns).Close()
@@ -269,7 +271,6 @@ func del(conn *gosocketio.Channel, c redis.Conn, key string) bool {
 				delMethod = "ZREM"
 			}
 			var iterater int64
-
 			for {
 				iterater, fields := scan(conn, c, key, "", _scanType, iterater, _globalConfigs.System.RowScanLimits)
 				slice := make([]interface{}, 0, _globalConfigs.System.RowScanLimits)

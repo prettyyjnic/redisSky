@@ -166,10 +166,7 @@ func GetKey(conn *gosocketio.Channel, data json.RawMessage) {
 			field = extra["field"]
 		}
 		var size int
-		size = _redisValue.Size
-		if size == 0 {
-			size = _globalConfigs.System.RowScanLimits
-		}
+		size = _globalConfigs.System.RowScanLimits
 		if t, err := keyType(conn, c, key); err == nil {
 			if t == "none" {
 				sendCmdError(conn, "key is not exists")
