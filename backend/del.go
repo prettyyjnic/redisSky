@@ -48,7 +48,6 @@ func (task *delKeysStruct) run() {
 				task.ErrMsg = ""
 				task.run()
 			} else {
-				log.Println("retry task fail ！")
 				task.IsComplete = true
 				if task.redisIns != nil {
 					(*task.redisIns).Close()
@@ -121,7 +120,7 @@ func (task *delKeysStruct) run() {
 						lenMethod = "ZCARD"
 						delMethod = "ZREM"
 					}
-					var iterater int64
+					var iterator int64
 					var sizes int
 					var err error
 					sizes, err = redis.Int(c.Do(lenMethod, key))
@@ -131,26 +130,29 @@ func (task *delKeysStruct) run() {
 						return
 					}
 					for {
-						iterater, fields := scan(nil, c, key, "", _scanType, iterater, _globalConfigs.System.RowScanLimits)
+						var fields []string
+						iterator, fields = scan(nil, c, key, "", _scanType, iterator, _globalConfigs.System.RowScanLimits)
 						if fields == nil {
 							task.Process = 0
 							task.ErrMsg = "scan key " + key + " return nil"
 							return
 						}
-						slice := make([]interface{}, 0, _globalConfigs.System.RowScanLimits)
-						slice = append(slice, key)
-						for i := 0; i < len(fields); i = i + 2 {
-							slice = append(slice, fields[i])
+						if len(fields) > 0 {
+							slice := make([]interface{}, 0, _globalConfigs.System.RowScanLimits)
+							slice = append(slice, key)
+							for i := 0; i < len(fields); i = i + 2 {
+								slice = append(slice, fields[i])
+							}
+							_, err = redis.Int64(c.Do(delMethod, slice...))
+							slice = nil
+							if err != nil {
+								task.Process = 0
+								task.ErrMsg = err.Error()
+								return
+							}
+							task.calProcess(len(fields), sizes)
 						}
-						_, err = redis.Int64(c.Do(delMethod, slice...))
-						slice = nil
-						if err != nil {
-							task.Process = 0
-							task.ErrMsg = err.Error()
-							return
-						}
-						task.calProcess(len(fields), sizes)
-						if iterater == 0 {
+						if iterator == 0 {
 							break
 						}
 					}
@@ -290,9 +292,7 @@ func del(conn *gosocketio.Channel, c redis.Conn, key string) bool {
 					break
 				}
 			}
-
 		}
-
 	}
 	return true
 	// conn.Emit("ReloadKeys", nil)

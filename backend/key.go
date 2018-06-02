@@ -74,7 +74,9 @@ func scan(conn *gosocketio.Channel, c redis.Conn, key, field string, t scanType,
 			sendCmdError(conn, "redis error: "+err.Error())
 			return 0, nil
 		}
-		keys = append(keys, tmp...)
+		if len(tmp) > 0 {
+			keys = append(keys, tmp...)
+		}
 		iterate, err = redis.Int64(ret[0], nil)
 		if err != nil {
 			sendCmdError(conn, "redis error: "+err.Error())
